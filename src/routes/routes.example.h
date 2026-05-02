@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-#include <../lib/server/router.h>
+#include <router.h>
 
 namespace routes_example
 {

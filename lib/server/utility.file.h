@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 
-#include <ArduinoJson-v7.4.3.h>
+#include <ArduinoJson.h>
 
 namespace ESP32WebServer
 {
@@ -29,13 +29,41 @@ namespace ESP32WebServer
 
     /*-------------------------------------------------------------------------------------------------
      *
+     * Unzipping
+     *
+     **/
+
+    //inline std::string unzip(const std::string &filePath)
+    //{
+    //    const std::string unzippedFolder = getTempFolder();
+    //    LittleFS.mkdir(unzippedFolder.c_str());
+//
+    //    
+    //    
+    //    return unzippedFolder;
+    //}
+
+    /*-------------------------------------------------------------------------------------------------
+     *
      * Folder and Folder Contents
      *
      **/
 
+    inline std::string randomString(int size = 32)
+    {
+        std::string charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        std::string result;
+        for (int i = 0; i < size; i++)
+        {
+            int index = random(0, charSet.size());
+            result += charSet[index];
+        }
+        return result;
+    }
+
     inline std::string getTempFolder()
     {
-        return TEMP_FOLDER + std::to_string(millis());
+        return TEMP_FOLDER + randomString(8);
     }
 
     inline std::vector<FileInfo> listFiles(const std::string &folderPath, std::vector<FileInfo> &files, const std::string &prefix = "")

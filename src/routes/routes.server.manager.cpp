@@ -2,10 +2,6 @@
 
 #include <routes/routes.server.manager.h>
 
-#include <HTTPClient.h>
-#include <WiFiUdp.h>
-#include <WiFi.h>
-
 namespace routes_server_manager
 {
 

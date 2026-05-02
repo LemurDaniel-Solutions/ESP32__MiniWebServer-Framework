@@ -1,9 +1,10 @@
 
 
-#include <Arduino.h>
+#include <HTTPClient.h>
+#include <WiFiUdp.h>
 #include <WiFi.h>
 
-#include <../lib/server/router.h>
+#include <router.h>
 
 namespace routes_server_manager
 {

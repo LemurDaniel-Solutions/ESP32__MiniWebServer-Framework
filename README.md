@@ -16,9 +16,9 @@
 
 ## 🎯 Overview
 
-A lightweight **Mini WebServer Framework** for ESP32 microcontrollers as a personal project! 🎉 
+A lightweight **Mini WebServer Framework** for ESP32 microcontrollers as a personal project! 🎉
 
-Just copy the server folder into your project and include server.h for the server and router.h for your routes.
+Add it to your PlatformIO project via `lib_deps` and include `server.h`.
 
 May not work with the RISC V Processor
 - ESP32-C3
@@ -42,14 +42,6 @@ It Should work with following families:
 
 ```
 📦 ESP32 Mini WebServer Framework
-├── 📁 src/
-│   ├── 🎯 main.cpp                 # Main application entry
-│   └── 📁 routes/
-│       └── 🛤️ routes.example.h     # API route definitions
-│       └── 🛤️ routes.example.cpp   # API route implementations
-├── 📁 data/
-│   └── 📁 web/
-│       └── 🎨 index.html           # Web interface
 ├── 📁 lib/
 │   └── 📁 server/
 │       ├── 🌐 server.h/.cpp        # Core web server
@@ -58,85 +50,147 @@ It Should work with following families:
 │       ├── 📤 response.h           # HTTP response handling
 │       ├── 🔐 utility.admin.h      # Admin Dashboard
 │       ├── 🛜 utility.wifi.h       # WiFi utility
-│       ├── 📂 utility.file.h       # File utility
-│       └── 📋 ArduinoJson-v7.4.3.h # JSON library
+│       └── 📂 utility.file.h       # File utility
+├── 📁 src/                         # Example application
+│   ├── 🎯 main.cpp
+│   └── 📁 routes/
+│       └── 🛤️ routes.example.h/.cpp
+├── 📁 data/
+│   └── 📁 web/
+│       └── 🎨 index.html           # Example web interface
+├── 📋 library.json                 # PlatformIO library config
 ├── ⚙️ platformio.ini               # Build configuration
 └── 📖 README.md                    # This file
 ```
 
-## 🎮 Usage
+## 📦 Installation
 
-### **Accessing the Web Interface**
+Add the following to your `platformio.ini`:
 
-1. Connect your ESP32 to power
-2. Check the serial monitor — either the IP address is printed (WiFi connected) or the device started in AP mode (`192.168.4.1`)
-3. Open your browser and navigate to the IP address
+```ini
+[env:your_board]
+platform = espressif32
+framework = arduino
+board = <your-board>
+board_build.filesystem = littlefs
 
-### **Example API Endpoints**
+lib_deps =
+    https://github.com/LemurDaniel/ESP32__MiniWebServer-Framework.git
 
-| Method | Endpoint | Description | Response |
-|--------|----------|-------------|----------|
-| 🟢 GET | `/hello` | Simple hello world | Text response 📝 |
-| 🟢 GET | `/status` | Device status | JSON with device info 📊 |
-| 🟢 GET | `/example` | Example Get | Text response 📝 |
-| 🟡 POST | `/data` | Simple POST | JSON data response 📊 |
+; List any static files you want embedded in the LittleFS image
+board_build.include_files_txt =
+    data/web/index.html
+    data/web/main.css
+```
 
+Then include `server.h` in your code:
+
+```cpp
+#include <server.h>
+```
+
+PlatformIO downloads the library and its dependencies (ArduinoJson) automatically on the next build.
 
 ---
 
-<details>
-<summary>🚀 Quick Start</summary>
+## 🎮 Usage
 
-### Prerequisites
+### 🚀 Quick Start
+
+#### Prerequisites
 
 - ✅ [PlatformIO IDE](https://platformio.org/platformio-ide)
 - ✅ ESP32 development board
-- ✅ USB cable for programming 🔌
-- ✅ WiFi network (optional — can configure via AP mode) 📶
+- ✅ USB cable for programming
+- ✅ WiFi network (optional — can be configured via AP mode after flashing)
 
-### Installation
+#### Minimal example
 
-1. **Connect your ESP32 via USB Cable** 🔌
+```cpp
+#include <Arduino.h>
+#include <server.h>
 
-2. **Install Plattfrom.IO Extension** 💾
+void setup()
+{
+    Serial.begin(115200);
 
-3. **Configure WiFi** 🔐
-   Either call `connectWiFi()` in `src/main.cpp` to pre-save credentials:
-   ```cpp
-   Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
-   ```
-   Or skip this step — the device will start in AP mode (`192.168.4.1`) and you can configure WiFi via the Admin Dashboard at `/admin`.
+    ESP32WebServer::MiniServer *Server = new ESP32WebServer::MiniServer();
 
-4. **Build and Upload FileSystem (to push /data contents to ESP32)** 🔨
+    // Optional: pre-save WiFi credentials in code.
+    // Without this the device starts in AP mode — see WiFi Setup below.
+    // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
 
-![PlatformIO.IO](.assets/pio.build-filesystem.png)
+    Server->get("/hello", [](const ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+        res.text("Hello from ESP32!").OK();
+    });
 
-5. **Use PlatformIO to Upload and Monitor code from main.cpp** 🔨
+    Server->start(80);
+}
 
-![PlatformIO.IO](.assets/pio.upload-monitor.png)
+void loop() { delay(10); }
+```
 
-### WiFi Connection Behavior
+After uploading, open the serial monitor — the device prints its IP address once connected. Navigate to that address in your browser.
 
-Default Admin Credentials:
-> `Name:      admin`
->
-> `Password:  admin`
+---
 
-Default IP in AP-Mode: (Only valid when not connected to other WiFi!)
-> `192.168.4.1`
+### 🛜 WiFi Setup
 
-On `Server->start()` the connection routine runs immediately. Every **30 seconds** afterwards, if the device is no longer connected, the routine runs again automatically.
+The device supports two WiFi modes that switch automatically:
 
-**Connection routine:**
+**Station mode** — connects to a saved WiFi network on boot and prints the assigned IP to the serial monitor.
 
-1. **Scan** for nearby networks and intersect with all saved networks (from config file).
-2. **Sort** matches by signal strength for the strongest network.
+**AP mode** — fallback when no saved network is in range. The device creates a hotspot called `ESP32_MiniWebServer` at `192.168.4.1`. Open the Admin Dashboard at `/admin` to scan for networks, enter credentials, and save them.
+
+#### Configuring WiFi in code
+
+Credentials are saved permanently to LittleFS. Multiple networks can be stored — on each boot the device picks whichever saved network has the strongest signal:
+
+```cpp
+Server->connectWiFi("HOME_SSID", "HOME_PASSWORD");
+Server->connectWiFi("OFFICE_SSID", "OFFICE_PASSWORD");
+
+// Remove all saved networks and force AP mode
+// Server->clearWiFi();
+```
+
+#### Connection routine
+
+On `Server->start()` and every **30 seconds** while offline:
+
+1. **Scan** for nearby networks and match against all saved networks.
+2. **Sort** matches by signal strength.
 3. **Connect** to each candidate in order (30-second timeout per attempt).
-4. **Fallback to AP mode** (`ESP32_MiniWebServer`, IP `192.168.4.1`) if no saved network is in range or all connection attempts fail.
+4. **Fallback to AP mode** if no saved network is reachable.
 
-Networks are saved to the config file on LittleFS. Both `connectWiFi()` in code and the Admin Dashboard write to the same config — **multiple networks can be saved** and the device will always prefer whichever has the strongest signal at that moment.
+#### Default admin credentials
 
-</details>
+| Field | Default |
+|-------|---------|
+| Username | `admin` |
+| Password | `admin` |
+
+Override in code — these are only applied on first boot if no credentials file exists yet:
+
+```cpp
+Server->defaultAdminCredentials("admin", "my-secure-password");
+Server->defaultAdminSalt("optional-salt");
+
+// Disable the admin dashboard entirely
+// Server->disableAdmin();
+```
+
+---
+
+### 🔨 Build & Upload
+
+**1. Upload the filesystem** — required if you serve static files from LittleFS (e.g. a frontend). Skip if you are not using `Server->root()` or `Server->staticFile()`.
+
+![Build Filesystem](.assets/pio.build-filesystem.png)
+
+**2. Upload firmware and open the serial monitor**
+
+![Upload and Monitor](.assets/pio.upload-monitor.png)
 
 ---
 
@@ -172,7 +226,7 @@ Declare handler functions and a `Router` class that registers them:
 #include <Arduino.h>
 #include <WiFi.h>
 
-#include <../lib/server/router.h>
+#include <router.h>
 
 namespace routes_example
 {
@@ -246,7 +300,7 @@ namespace routes_example
 
 ```cpp
 #include <Arduino.h>
-#include <../lib/server/server.h>
+#include <server.h>
 #include <routes/routes.example.h>
 
 void setup()

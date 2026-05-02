@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <ArduinoJson-v7.4.3.h>
+#include <ArduinoJson.h>
 
 #include <LittleFS.h>
 #include <string>

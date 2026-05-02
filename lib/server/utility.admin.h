@@ -129,18 +129,6 @@ namespace ESP32WebServer
             return username == admin_user && hash == admin_pwd;
         }
 
-        std::string randomString()
-        {
-            std::string charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            std::string result;
-            for (int i = 0; i < 16; i++)
-            {
-                int index = random(0, charSet.size());
-                result += charSet[index];
-            }
-            return result;
-        }
-
         std::string generateSHA256(const std::string &text, const std::string salt)
         {
             mbedtls_sha256_context ctx;
