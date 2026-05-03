@@ -120,7 +120,7 @@ void setup()
     // Without this the device starts in AP mode — see WiFi Setup below.
     // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
 
-    Server->get("/hello", [](const ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+    Server->get("/hello", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
         res.text("Hello from ESP32!").OK();
     });
 
@@ -242,10 +242,10 @@ namespace routes_example
         }
 
     private:
-        static void get_hello(const ESP32WebServer::Request &req, ESP32WebServer::Response &res);
-        static void get_status(const ESP32WebServer::Request &req, ESP32WebServer::Response &res);
-        static void get_example(const ESP32WebServer::Request &req, ESP32WebServer::Response &res);
-        static void post_data(const ESP32WebServer::Request &req, ESP32WebServer::Response &res);
+        static void get_hello(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
+        static void get_status(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
+        static void get_example(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
+        static void post_data(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
     };
 
 }
@@ -262,12 +262,12 @@ In the `.cpp`, include the header and implement each function:
 
 namespace routes_example
 {
-    void Router::get_hello(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_hello(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
     {
         res.text("Hello, World! This is a simple response from the ESP32.").status(200);
     }
 
-    void Router::get_status(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_status(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
     {
         JsonDocument status;
 
@@ -280,12 +280,12 @@ namespace routes_example
         res.json(status).status(200);
     }
 
-    void Router::get_example(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_example(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
     {
         res.text("This is an example route!").status(200);
     }
 
-    void Router::post_data(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::post_data(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
     {
         JsonDocument response;
         response["message"] = "Data received successfully";
@@ -386,6 +386,52 @@ res.text("Unauthorized").status(401).finalize();
 ---
 
 <details>
+<summary>📥 Request Body</summary>
+
+The request body is accessed via `req.body` and is read lazily — nothing is read from the socket until you call one of the methods below.
+
+| Method | Description |
+|--------|-------------|
+| `req.body.text()` | Read body as a `std::string` |
+| `req.body.json()` | Parse body as JSON, returns `JsonDocument` |
+| `req.body.file()` | Write body to a temp file on LittleFS, returns the file path |
+| `req.body.chunks(buf, size)` | Read body in chunks into a buffer, returns bytes read |
+
+`req.body.contentLength` and `req.body.contentType` are always available without triggering a read.
+
+### JSON body
+
+```cpp
+Server->post("/data", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+    JsonDocument body = req.body.json();
+    const char* name = body["name"];
+    res.text(name).OK();
+});
+```
+
+### Binary / streaming (e.g. OTA firmware)
+
+```cpp
+Server->post("/ota", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+    if (Update.begin(req.body.contentLength)) {
+        uint8_t buf[1024];
+        size_t n;
+        while ((n = req.body.chunks(buf, sizeof(buf))) > 0)
+            Update.write(buf, n);
+
+        if (Update.end() && Update.isFinished())
+            res.text("Update OK").OK();
+        else
+            res.text("Update failed").InternalServerError();
+    }
+});
+```
+
+</details>
+
+---
+
+<details>
 <summary>🔗 Middleware Chain</summary>
 
 Middleware allows you to chain multiple handler functions for a single route. Each handler runs in order. Calling `res.finalize()`, stops processing further handlers in the chain
@@ -408,7 +454,7 @@ The server iterates through all handlers and breaks as soon as `response.finaliz
 A middleware handler has the same signature as a regular route handler. Call `res.finalize()` to short-circuit the chain:
 
 ```cpp
-void authMiddleware(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+void authMiddleware(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
 {
     // Check for a valid session cookie or token
     if (req.cookies.find("session") == req.cookies.end())
@@ -420,7 +466,7 @@ void authMiddleware(const ESP32WebServer::Request &req, ESP32WebServer::Response
     // No finalize() call → next handler in the chain runs
 }
 
-void get_secret(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+void get_secret(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
 {
     res.text("Secret data!").status(200);
 }
@@ -484,72 +530,30 @@ Request → use() handlers (global, then prefix-matched, in registration order)
 ---
 
 <details>
-<summary>🛜 WiFi Handling & Admin Dashboard</summary>
+<summary>🛜 Admin Dashboard</summary>
 
-### WiFi Connection Behavior
+The built-in Admin Dashboard is available at `/admin` on every device. In AP mode (no WiFi configured) connect to the `ESP32_MiniWebServer` hotspot and open `192.168.4.1/admin`.
 
-Default Admin Credentials:
-> `Name:      admin`
->
-> `Password:  admin`
+![Admin Dashboard](.assets/admin.dashboard.overview.png)
 
-Default IP in AP-Mode: (Only valid when not connected to other WiFi!)
-> `192.168.4.1`
+It provides:
 
-On `Server->start()` the connection routine runs immediately. Every **30 seconds** afterwards, if the device is no longer connected, the routine runs again automatically.
-
-**Connection routine:**
-
-1. **Scan** for nearby networks and intersect with all saved networks (from config file).
-2. **Sort** matches by signal strength for the strongest network.
-3. **Connect** to each candidate in order (30-second timeout per attempt).
-4. **Fallback to AP mode** (`ESP32_MiniWebServer`, IP `192.168.4.1`) if no saved network is in range or all connection attempts fail.
-
-Networks are saved to the config file on LittleFS. Both `connectWiFi()` in code and the Admin Dashboard write to the same config — **multiple networks can be saved** and the device will always prefer whichever has the strongest signal at that moment.
-
-```cpp
-// Saves credentials to config file
-// Multiple calls save multiple networks
-// Preferably set via Admin Dashboard
-Server->connectWiFi("HOME_SSID", "HOME_PASSWORD");
-Server->connectWiFi("OFFICE_SSID", "OFFICE_PASSWORD");
-
-// Remove all saved networks (triggers AP mode fallback)
-// Server->clearWiFi();
-
-Server->start(80);
-```
-
-### Admin Dashboard
-
-The built-in Admin Dashboard is available at `/admin` and provides:
-
-- **Network Connection**
-shows current SSID, signal strength, and IP address. Use **Change WiFi** to scan for nearby networks, pick one, enter the password, and save — the credentials are written to the config file so they persist across reboots.
-- **Security**
-update the admin username and password.
-- **Restart Device**
-trigger a reboot directly from the browser.
-
-#### Changing WiFi via the Dashboard
-
-Clicking **Change WiFi** expands a form showing all scanned networks (with signal strength). Select a network, enter the password, then hit **Save**. Use **Rescan** to refresh the list or **Clear** to erase the saved config.
+- **WiFi** — scan for nearby networks, select one, enter the password and save. Credentials persist across reboots. Multiple networks can be stored; the device always picks the strongest signal.
+- **Security** — change the admin username and password.
+- **Restart** — reboot the device directly from the browser.
 
 ![Admin Dashboard WiFi](.assets/admin.dashboard.wifi.png)
 
-#### Additional Configuration
+#### Configuration
 
-Default admin credentials can be overridden in code.
-
-To disable the admin routes entirely call `disableAdmin()`.
+Default credentials are `admin` / `admin`. Override in code:
 
 ```cpp
-// Hardcode default credentials (Can be set via Dashboard without hardcoding!)
-// Server->defaultAdminCredentials("admin", "admin")
-// Server->defaultAdminSalt("")
+Server->defaultAdminCredentials("admin", "my-secure-password");
+Server->defaultAdminSalt("optional-salt");
 
-// Disables admin routes entirely
-// Server->disableAdmin()
+// Disable the dashboard entirely
+// Server->disableAdmin();
 ```
 
 </details>

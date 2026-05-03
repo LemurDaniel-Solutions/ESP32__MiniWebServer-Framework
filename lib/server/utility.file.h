@@ -8,6 +8,7 @@
 #include <LittleFS.h>
 
 #include <ArduinoJson.h>
+#include <ESP32-targz.h>
 
 namespace ESP32WebServer
 {
@@ -27,28 +28,6 @@ namespace ESP32WebServer
         std::string baseName;
     };
 
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Unzipping
-     *
-     **/
-
-    //inline std::string unzip(const std::string &filePath)
-    //{
-    //    const std::string unzippedFolder = getTempFolder();
-    //    LittleFS.mkdir(unzippedFolder.c_str());
-//
-    //    
-    //    
-    //    return unzippedFolder;
-    //}
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Folder and Folder Contents
-     *
-     **/
-
     inline std::string randomString(int size = 32)
     {
         std::string charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -65,6 +44,40 @@ namespace ESP32WebServer
     {
         return TEMP_FOLDER + randomString(8);
     }
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Unzipping
+     *
+     **/
+
+    inline std::string unzip(const std::string &filePath)
+    {
+        const std::string unzippedFolder = getTempFolder();
+        LittleFS.mkdir(unzippedFolder.c_str());
+
+        TarUnpacker *TARUnpacker = new TarUnpacker();
+
+        TARUnpacker->haltOnError(true);                                                            // stop on fail (manual restart/reset required)
+        TARUnpacker->setTarVerify(true);                                                           // true = enables health checks but slows down the overall process
+        TARUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);                        // prevent the partition from exploding, recommended
+        TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);                // prints the untarring progress for each individual file
+        TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback); // print the filenames as they're expanded
+        TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);                // tar log verbosity
+
+        if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str()))
+        {
+            Serial.printf("tarExpander failed with return code #%d\n", TARUnpacker->tarGzGetError());
+        }
+
+        return unzippedFolder;
+    }
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Folder and Folder Contents
+     *
+     **/
 
     inline std::vector<FileInfo> listFiles(const std::string &folderPath, std::vector<FileInfo> &files, const std::string &prefix = "")
     {

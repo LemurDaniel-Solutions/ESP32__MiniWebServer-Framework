@@ -213,7 +213,7 @@ namespace ESP32WebServer
         std::map<std::string, unsigned long> ADMIN_TOKENS;
     };
 
-    inline void get_AdminLogin(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    inline void get_AdminLogin(Request &req, Response &res)
     {
         std::string adminPage = R"html(
 <!DOCTYPE html>
@@ -361,7 +361,7 @@ namespace ESP32WebServer
         res.html(adminPage);
     }
 
-    inline void get_AdminDashboard(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    inline void get_AdminDashboard(Request &req, Response &res)
     {
         std::string dashboardPage = R"html(
 <!DOCTYPE html>
@@ -992,7 +992,7 @@ namespace ESP32WebServer
      *
      **/
 
-    inline bool isTokenValid(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    inline bool isTokenValid(Request &req, Response &res)
     {
         Serial.println("Checking authentication for admin route");
 
@@ -1013,7 +1013,7 @@ namespace ESP32WebServer
         return true;
     }
 
-    inline void verify_AdminAuth(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    inline void verify_AdminAuth(Request &req, Response &res)
     {
         if (!isTokenValid(req, res))
         {
@@ -1045,7 +1045,7 @@ namespace ESP32WebServer
         if (req.method == "GET")
             return;
 
-        if (req.body.isNull())
+        if (req.body.json().isNull())
         {
             res.status(400).text("Invalid JSON").finalize();
             return;
@@ -1058,7 +1058,7 @@ namespace ESP32WebServer
      *
      **/
 
-    inline void get_AdminLogout(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    inline void get_AdminLogout(Request &req, Response &res)
     {
         const auto &entry = req.cookies.find(TokenManager::instance().DEFAULT_ADMIN_COOKIE);
 
@@ -1070,18 +1070,20 @@ namespace ESP32WebServer
         res.OK();
     }
 
-    inline void post_AdminLogin(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    inline void post_AdminLogin(Request &req, Response &res)
     {
 
-        if (!req.body["username"].is<std::string>() && !req.body["password"].is<std::string>())
+        const JsonDocument &body = req.body.json();
+
+        if (!body["username"].is<std::string>() && !body["password"].is<std::string>())
         {
             Serial.println("Missing username or password in login request");
             res.status(400).text("Invalid username or password");
             return;
         }
 
-        std::string username = req.body["username"].as<std::string>();
-        std::string password = req.body["password"].as<std::string>();
+        std::string username = body["username"].as<std::string>();
+        std::string password = body["password"].as<std::string>();
 
         if (!TokenManager::instance().checkCredentials(username, password))
         {
@@ -1104,14 +1106,14 @@ namespace ESP32WebServer
     inline void post_AdminUpdateAuth(Request &req, Response &res)
     {
 
-        if (!req.body["admin_user"].is<std::string>() || !req.body["admin_pwd"].is<std::string>())
+        if (!req.body.json()["admin_user"].is<std::string>() || !req.body.json()["admin_pwd"].is<std::string>())
         {
             res.status(400).text("Missing admin_user or admin_pwd");
             return;
         }
 
-        std::string newAdminUser = req.body["admin_user"].as<std::string>();
-        std::string newAdminPwd = req.body["admin_pwd"].as<std::string>();
+        std::string newAdminUser = req.body.json()["admin_user"].as<std::string>();
+        std::string newAdminPwd = req.body.json()["admin_pwd"].as<std::string>();
 
         if (TokenManager::instance().setCredentials(newAdminUser, newAdminPwd))
         {
@@ -1185,13 +1187,13 @@ namespace ESP32WebServer
     inline void delete_WiFiSavedNetwork(Request &req, Response &res)
     {
 
-        if (req.body.isNull() || !req.body["ssid"].is<std::string>())
+        if (req.body.json().isNull() || !req.body.json()["ssid"].is<std::string>())
         {
             res.status(400).text("Missing ssid");
             return;
         }
 
-        std::string ssid = req.body["ssid"].as<std::string>();
+        std::string ssid = req.body.json()["ssid"].as<std::string>();
         WiFiUtility::instance().removeWiFiConfig(ssid);
         res.OK().text("Network removed");
     }
@@ -1199,14 +1201,14 @@ namespace ESP32WebServer
     inline void post_WiFiSavedNetwork(Request &req, Response &res)
     {
 
-        if (!req.body["ssid"].is<std::string>() || !req.body["password"].is<std::string>())
+        if (!req.body.json()["ssid"].is<std::string>() || !req.body.json()["password"].is<std::string>())
         {
             res.status(400).text("Missing ssid or password");
             return;
         }
 
-        std::string ssid = req.body["ssid"].as<std::string>();
-        std::string password = req.body["password"].as<std::string>();
+        std::string ssid = req.body.json()["ssid"].as<std::string>();
+        std::string password = req.body.json()["password"].as<std::string>();
 
         WiFiUtility::instance().addWiFiConfig(ssid, password);
 

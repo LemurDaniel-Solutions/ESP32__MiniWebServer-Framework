@@ -18,6 +18,135 @@ namespace ESP32WebServer
 
     const size_t BODY_SIZE_TRESHOLD = 8192;
 
+    struct SocketReader
+    {
+        int clientSocket = -1;
+        std::vector<uint8_t> bytes;
+
+        // Allows the prepend back to much read bytes
+        void prepend(std::vector<uint8_t> bytes)
+        {
+            this->bytes = std::move(bytes);
+        }
+
+        int read(void *buf, size_t len)
+        {
+            if (!bytes.empty())
+            {
+                size_t n = std::min(len, bytes.size());
+                memcpy(buf, bytes.data(), n);
+                bytes.erase(bytes.begin(), bytes.begin() + n);
+                return (int)n;
+            }
+            return ::read(clientSocket, buf, len);
+        }
+    };
+
+    class RequestBody
+    {
+        friend class Request;
+
+    private:
+        SocketReader socket;
+        std::string bodyText;
+        std::string filePath;
+        JsonDocument bodyJson;
+
+        size_t readSize = 0;
+
+    public:
+        RequestBody() = default;
+
+        size_t contentLength = 0;
+        std::string contentType = "application/text";
+
+        void clean()
+        {
+            if (!filePath.empty())
+            {
+                LittleFS.remove(filePath.c_str());
+                Serial.print("Removed file: ");
+                Serial.println(filePath.c_str());
+            }
+        }
+
+        std::string text()
+        {
+            if (!bodyText.empty())
+            {
+                return bodyText;
+            }
+
+            char chunk[256];
+            while (bodyText.size() < contentLength)
+            {
+                size_t toRead = std::min((size_t)sizeof(chunk), contentLength - bodyText.size());
+                int n = socket.read(chunk, toRead);
+                if (n <= 0)
+                    break;
+                bodyText.insert(bodyText.end(), chunk, chunk + n);
+            }
+
+            return bodyText;
+        }
+
+        JsonDocument json()
+        {
+            if (bodyJson.size() == 0)
+            {
+                this->text();
+                deserializeJson(bodyJson, bodyText.c_str());
+            }
+
+            return bodyJson;
+        }
+
+        std::string file()
+        {
+            if (!filePath.empty())
+            {
+                return filePath;
+            }
+
+            filePath = getTempFolder() + "/" + randomString(4);
+            File tmpFile = LittleFS.open(filePath.c_str(), "w", true);
+            if (!tmpFile)
+            {
+                Serial.println("Failed to open temp file for body");
+                filePath = "";
+                return filePath;
+            }
+
+            char chunk[256];
+            size_t written = 0;
+            while (written < contentLength)
+            {
+                size_t toRead = std::min((size_t)sizeof(chunk), contentLength - written);
+                int n = socket.read(chunk, toRead);
+                if (n <= 0)
+                    break;
+                tmpFile.write((uint8_t *)chunk, n);
+            }
+
+            tmpFile.close();
+            Serial.printf("Body written to temp file: %s (%zu bytes)\n", filePath.c_str(), written);
+
+            return filePath;
+        }
+
+        size_t chunks(uint8_t *chunk, size_t chunkSize)
+        {
+            if (readSize >= contentLength)
+                return 0;
+
+            size_t toRead = std::min(chunkSize, contentLength - readSize);
+            size_t n = socket.read(chunk, toRead);
+            readSize += n;
+
+            return n;
+        }
+    };
+
     class Request
     {
     private:
@@ -76,47 +205,6 @@ namespace ESP32WebServer
 
         /*-------------------------------------------------------------------------------------------------
          *
-         * Extract body content
-         *
-         *
-         **/
-        void drainSocket()
-        {
-            char drain[256];
-            size_t drained = bodyRaw.size();
-            bodyRaw.clear();
-            while (drained < contentLength)
-            {
-                size_t toRead = std::min((size_t)sizeof(drain), contentLength - drained);
-                int n = read(clientSocket, drain, toRead);
-                if (n <= 0)
-                    break;
-                drained += n;
-            }
-        }
-
-        std::string extractBodyAsText(size_t maxSize = std::string::npos) const
-        {
-            size_t size = (maxSize == std::string::npos) ? bodyRaw.size() : std::min(maxSize, bodyRaw.size());
-            return std::string(reinterpret_cast<const char *>(bodyRaw.data()), size);
-        }
-
-        std::string readBodyAsText()
-        {
-            char chunk[256];
-            while (bodyRaw.size() < contentLength)
-            {
-                size_t toRead = std::min((size_t)sizeof(chunk), contentLength - bodyRaw.size());
-                int n = read(clientSocket, chunk, toRead);
-                if (n <= 0)
-                    break;
-                bodyRaw.insert(bodyRaw.end(), chunk, chunk + n);
-            }
-            return extractBodyAsText(contentLength);
-        }
-
-        /*-------------------------------------------------------------------------------------------------
-         *
          * Extract Header
          *
          *
@@ -136,7 +224,7 @@ namespace ESP32WebServer
             // Phase 1: read until \r\n\r\n (complete headers)
             do
             {
-                int n = read(clientSocket, chunk, sizeof(chunk));
+                int n = socket.read(chunk, sizeof(chunk));
                 if (n <= 0)
                 {
                     Serial.println("Failed to read from socket");
@@ -150,13 +238,12 @@ namespace ESP32WebServer
                 return headerRaw;
 
             // ---------------------------------------------------------------------
-            // Phase 2: bytes in headers string are the start of the body;
+            // Phase 2: bytes in headers prepend for next read
             std::vector<uint8_t> body(header.begin() + headerEnd + 4, header.end());
-            bodyRaw = body;
+            socket.prepend(body);
 
             // ---------------------------------------------------------------------
             // Phase 3: split headers into list of lines
-
             header.resize(headerEnd);
             size_t startOfLine = 0;
             while (startOfLine < header.size())
@@ -187,18 +274,11 @@ namespace ESP32WebServer
         // Delete temp file on destruktor
         ~Request()
         {
-            if (!filePath.empty())
-            {
-                LittleFS.remove(filePath.c_str());
-                Serial.print("Removed file: ");
-                Serial.println(filePath.c_str());
-            }
+            body.clean();
         }
 
     private:
-        int clientSocket;
-        size_t readSize = 0;
-        std::vector<uint8_t> bodyRaw; // Raw body as bytes
+        SocketReader socket;
 
     public:
         int rejected = false;
@@ -209,20 +289,19 @@ namespace ESP32WebServer
         std::map<std::string, std::string> headers;
         std::map<std::string, std::string> cookies;
 
-        size_t contentLength = 0;
-        std::string contentType = "application/text";
-
-        std::string filePath; // set if body was too large for RAM and written to LittleFS
-        JsonDocument body;    // Parsed JSON body (if Content-Type: application/json)
+        RequestBody body;
 
         static Request parse(int clientSocket)
         {
             Request request;
-            request.clientSocket = clientSocket;
+            request.socket.clientSocket = clientSocket;
 
             // --- Extract header ---
             Serial.println("Extracing Raw Header");
             std::vector<std::string> headerRaw = request.extractHeader();
+
+            // Move socket (with any buffered body-prefix bytes) into body
+            request.body.socket = std::move(request.socket);
             if (headerRaw.empty())
                 return request;
 
@@ -250,9 +329,10 @@ namespace ESP32WebServer
             }
 
             // --- Extract body ---
+
             if (request.headers.find("Content-Type") != request.headers.end())
             {
-                request.contentType = request.headers["Content-Type"];
+                request.body.contentType = request.headers["Content-Type"];
             }
 
             auto clIt = request.headers.find("Content-Length");
@@ -262,71 +342,11 @@ namespace ESP32WebServer
                 {
                     if (c < '0' || c > '9')
                         break;
-                    request.contentLength = request.contentLength * 10 + (c - '0');
+                    request.body.contentLength = request.body.contentLength * 10 + (c - '0');
                 }
-            }
-
-            if (request.contentLength == 0)
-            {
-                return request;
-            }
-
-            if (request.contentType.find("application/json") != std::string::npos)
-            {
-                if (request.contentLength > BODY_SIZE_TRESHOLD)
-                {
-                    request.rejected = true;
-                    request.error = "JSON Request Body too big!";
-                    return request;
-                }
-
-                request.readBodyAsText();
-                deserializeJson(request.body, request.bodyRaw);
-            }
-            else if (
-                request.contentLength > BODY_SIZE_TRESHOLD ||
-                request.contentType.find("multipart/form-data") != std::string::npos ||
-                request.contentType.find("application/octet-stream") != std::string::npos ||
-                request.contentType.find("image/") != std::string::npos)
-            {
-                return request;
-            }
-            else
-            {
-                request.readBodyAsText();
             }
 
             return request;
-        }
-
-        size_t readBodyAsChunks(uint8_t *chunk, size_t chunkSize)
-        {
-            if (readSize >= contentLength)
-                return 0;
-
-            size_t written = 0;
-
-            // Copy bytes already buffered from header read into chunk
-            if (!bodyRaw.empty())
-            {
-                memcpy(chunk, bodyRaw.data(), bodyRaw.size());
-                written += bodyRaw.size();
-                readSize += bodyRaw.size();
-                bodyRaw.clear();
-            }
-
-            // Fill rest of chunk from socket
-            while (written < chunkSize && readSize < contentLength)
-            {
-                size_t toRead = std::min(chunkSize - written, contentLength - readSize);
-                int n = read(clientSocket, chunk + written, toRead);
-                if (n <= 0)
-                    break;
-                written += n;
-                readSize += n;
-            }
-
-            return written;
         }
     };
 }

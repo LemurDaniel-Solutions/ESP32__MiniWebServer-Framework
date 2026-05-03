@@ -26,20 +26,20 @@ namespace ESP32WebServer
     inline void post_UpdateWebsite(Request &req, Response &res)
     {
         Serial.print("File located at: ");
-        Serial.println(req.filePath.c_str());
+        Serial.println(req.body.file().c_str());
     }
 
     inline void post_UpdaterCode(Request &req, Response &res)
     {
-        size_t updateSize = req.contentLength;
+        size_t updateSize = req.body.contentLength;
 
-        if (Update.begin(req.contentLength))
+        if (Update.begin(req.body.contentLength))
         {
             uint8_t buff[1024];
             int available = 0;
             do
             {
-                available = req.readBodyAsChunks(buff, sizeof(buff));
+                available = req.body.chunks(buff, sizeof(buff));
                 if (available > 0)
                     Update.write(buff, available);
 
