@@ -16,6 +16,8 @@ namespace ESP32WebServer
 
         clearFolder(FOLDER_WEB);
         unzip(filePath, FOLDER_WEB);
+
+        post_AdminRestart(req, res);
     }
 
     void post_UpdateCode(Request &req, Response &res)
