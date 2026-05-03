@@ -170,7 +170,7 @@ namespace ESP32WebServer
             vTaskDelay(pdMS_TO_TICKS(500));
             Serial.print(".");
 
-            if ((int)(millis() / 1000) - timeStart >= WIFI_TIMEOUT_SEC)
+            if ((int)(millis() / 1000) - timeStart >= _WIFI_TIMEOUT_SEC)
             {
                 Serial.println("\nConnection timed out.");
                 WiFi.disconnect();
@@ -230,7 +230,7 @@ namespace ESP32WebServer
         }
 
         WiFi.mode(WIFI_AP);
-        WiFi.softAP(DEFAULT_WIFI_SSID.c_str());
+        WiFi.softAP(_DEFAULT_WIFI_SSID.c_str());
         Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
     }
 

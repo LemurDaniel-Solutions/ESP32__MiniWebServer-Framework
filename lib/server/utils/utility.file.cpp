@@ -180,6 +180,7 @@ namespace ESP32WebServer
             const FileInfo &info = getFileInfo(filePath);
 
             files.push_back(info);
+
             filePath = folder.getNextFileName().c_str();
         }
 
@@ -189,7 +190,7 @@ namespace ESP32WebServer
     void clearFolder(const std::string &folderPath)
     {
         File dir = LittleFS.open(folderPath.c_str());
-        
+
         if (!dir || !dir.isDirectory())
         {
             LittleFS.mkdir(folderPath.c_str());

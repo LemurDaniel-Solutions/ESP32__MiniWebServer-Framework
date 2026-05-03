@@ -16,7 +16,7 @@
 
 ## 🎯 Overview
 
-A lightweight **Mini WebServer Framework** for ESP32 microcontrollers as a personal project! 🎉
+A lightweight **Mini WebServer Framework** for ESP32 microcontrollers, built as a personal project.
 
 Add it to your PlatformIO project via `lib_deps` and include `server.h`.
 
@@ -87,14 +87,6 @@ board_build.include_files_txt =
     data/web/main.css
 ```
 
-Then include `server.h` in your code:
-
-```cpp
-#include <server.h>
-```
-
-PlatformIO downloads the library and its dependencies (ArduinoJson) automatically on the next build.
-
 ---
 
 ## 🎮 Usage
@@ -123,6 +115,13 @@ void setup()
     // Optional: pre-save WiFi credentials in code.
     // Without this the device starts in AP mode — see WiFi Setup below.
     // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
+
+    // Optional: serve static files from LittleFS (requires filesystem upload).
+    // root() sets the base directory for static files; any request that matches
+    // a file in that directory is served automatically.
+    // index() defines the file returned for GET /.
+    // Server->root("/web");
+    // Server->index("/web/index.html");
 
     Server->get("/hello", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
         res.text("Hello from ESP32!").OK();
@@ -167,28 +166,13 @@ On `Server->start()` and every **30 seconds** while offline:
 3. **Connect** to each candidate in order (30-second timeout per attempt).
 4. **Fallback to AP mode** if no saved network is reachable.
 
-#### Default admin credentials
-
-| Field | Default |
-|-------|---------|
-| Username | `admin` |
-| Password | `admin` |
-
-Override in code — these are only applied on first boot if no credentials file exists yet:
-
-```cpp
-Server->defaultAdminCredentials("admin", "my-secure-password");
-Server->defaultAdminSalt("optional-salt");
-
-// Disable the admin dashboard entirely
-// Server->disableAdmin();
-```
-
 ---
 
 ### 🔨 Build & Upload
 
-**1. Upload the filesystem** — required if you serve static files from LittleFS (e.g. a frontend). Skip if you are not using `Server->root()` or `Server->staticFile()`.
+> Upload the filesystem **before** the firmware — otherwise the firmware boots without the files it expects.
+
+**1. Upload the filesystem** — only required when serving static files from LittleFS (e.g. a frontend). Skip if you are not using `Server->root()` or `Server->staticFile()`.
 
 ![Build Filesystem](.assets/pio.build-filesystem.png)
 
@@ -201,26 +185,7 @@ Server->defaultAdminSalt("optional-salt");
 <details>
 <summary>🛤️ Router System</summary>
 
-### Best Practices
-
-**Organize by functionality:**
-```
-src/routes/
-├── routes.sensors.h/.cpp   # 🌡️ Temperature, humidity, pressure
-├── routes.control.h/.cpp   # 💡 LED, relay, motor control
-├── routes.system.h/.cpp    # 📊 System info, diagnostics
-└── routes.auth.h/.cpp      # 🔐 Authentication & user management
-```
-
-**Naming convention:**
-```cpp
-// Namespace: routes_{functionality}
-namespace routes_sensors { ... }
-
-// Functions: {method}_{endpoint}
-void get_temperature(Request &req, Response &res) { ... }
-void post_led_control(Request &req, Response &res) { ... }
-```
+For larger projects, group related routes into their own `Router` class instead of registering everything inline on the server.
 
 ### 1. Create the header file
 
@@ -251,7 +216,6 @@ namespace routes_example
         static void get_example(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
         static void post_data(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
     };
-
 }
 ```
 
@@ -260,15 +224,13 @@ namespace routes_example
 In the `.cpp`, include the header and implement each function:
 
 ```cpp
-
-
 #include <routes/routes.example.h>
 
 namespace routes_example
 {
     void Router::get_hello(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
     {
-        res.text("Hello, World! This is a simple response from the ESP32.").status(200);
+        res.text("Hello, World!").status(200);
     }
 
     void Router::get_status(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
@@ -296,7 +258,6 @@ namespace routes_example
         response["timestamp"] = millis();
         res.json(response).status(201);
     }
-
 }
 ```
 
@@ -311,20 +272,9 @@ void setup()
 {
     ESP32WebServer::MiniServer *Server = new ESP32WebServer::MiniServer();
 
-    // Will start enter WiFi setup, if this function isn't used.
-    // Credentials are permanently stored via LittleFs.
-    // Server->connectWiFi("<SSID / Wlan Name >", "***<PASSWORD>***");
+    // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
 
-    // For testing purposes, remove WiFi config to trigger AP mode
-    // Server->clearWiFi();
-
-    // Hardcode default credentials (Can be set via Dashboard without hardcoding!)
-    // Server->defaultAdminCredentials("admin", "admin");
-    // Server->defaultAdminSalt("");
-
-    // Disables admin routes entirely
-    // Server->disableAdmin();
-
+    // Serve static files from LittleFS
     Server->root("/web");
     Server->index("/web/index.html");
 
@@ -336,6 +286,27 @@ void setup()
 void loop() { delay(10); }
 ```
 
+### Best Practices
+
+**Organize by functionality:**
+```
+src/routes/
+├── routes.sensors.h/.cpp   # 🌡️ Temperature, humidity, pressure
+├── routes.control.h/.cpp   # 💡 LED, relay, motor control
+├── routes.system.h/.cpp    # 📊 System info, diagnostics
+└── routes.auth.h/.cpp      # 🔐 Authentication & user management
+```
+
+**Naming convention:**
+```cpp
+// Namespace: routes_{functionality}
+namespace routes_sensors { ... }
+
+// Functions: {method}_{endpoint}
+void get_temperature(Request &req, Response &res) { ... }
+void post_led_control(Request &req, Response &res) { ... }
+```
+
 </details>
 
 ---
@@ -343,11 +314,7 @@ void loop() { delay(10); }
 <details>
 <summary>📤 Response Handling</summary>
 
-A Response object is provided and passed to all handler functions
-
-The response is sent automatically 
-- after the last handler finishes
-- or a response in the chain is finalized
+A `Response` object is passed to every handler. The response is sent automatically after the last handler finishes, or as soon as `finalize()` is called.
 
 ### Response types
 
@@ -356,8 +323,10 @@ The response is sent automatically
 | `text(str)` | `text/plain` | `res.text("Hello").status(200)` |
 | `json(doc)` | `application/json` | `res.json(doc).status(200)` |
 | `html(str)` | `text/html` | `res.html("<h1>Hi</h1>").status(200)` |
-| `file(path)` | `text/html` | `res.file("/web/index.html")` |
+| `file(path)` | `text/html`| `res.file("/web/index.html")` |
 | `binaryFile(path)` | `application/octet-stream` | `res.binaryFile("/data.bin")` |
+
+Call `.header("Content-Type", "<Content-Type>")` to change type yourself.
 
 ### Status shorthands
 
@@ -438,29 +407,28 @@ Server->post("/ota", [](ESP32WebServer::Request &req, ESP32WebServer::Response &
 <details>
 <summary>🔗 Middleware Chain</summary>
 
-Middleware allows you to chain multiple handler functions for a single route. Each handler runs in order. Calling `res.finalize()`, stops processing further handlers in the chain
+Middleware lets you chain multiple handler functions for a single route. Each handler runs in order. Calling `res.finalize()` stops the chain immediately — no further handlers run.
 
-### **How it works**
+### How it works
 
-Instead of a single `RequestHandler`, pass a `std::vector<RequestHandler>` to `route()`:
+Instead of a single handler, pass a list to `route()`:
 
 ```cpp
 route("GET", "/secret", {
-    authMiddleware,   // runs first — aborts with 401 if not authorized via finalize()
+    authMiddleware,   // runs first — calls finalize() with 401 if not authorized
     get_secret        // only runs if authMiddleware did NOT finalize the response
 });
 ```
 
-The server iterates through all handlers and breaks as soon as `response.finalized == true` ([server.cpp](lib/server/server.cpp#L96-L107)).
+The server iterates through all handlers and stops as soon as `response.finalized == true` ([server.cpp](lib/server/server.cpp#L96-L107)).
 
-### **Implementing Middleware**
+### Implementing middleware
 
-A middleware handler has the same signature as a regular route handler. Call `res.finalize()` to short-circuit the chain:
+A middleware handler has the same signature as a regular route handler:
 
 ```cpp
 void authMiddleware(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
 {
-    // Check for a valid session cookie or token
     if (req.cookies.find("session") == req.cookies.end())
     {
         res.text("Unauthorized").status(401).finalize();
@@ -476,13 +444,16 @@ void get_secret(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
 }
 ```
 
-### **Registering Middleware**
+### Registering middleware
 
-There are two ways to attach middleware:
+**Per-route** — pass a handler list directly to `route()`. Runs only for that specific route:
 
-**Per-route** — pass a handler list directly to `route()`. Only runs for that specific route:
+```cpp
+route("GET", "/secret",  { authMiddleware, get_secret  });
+route("POST", "/config", { authMiddleware, post_config });
+```
 
-**Global / prefix-based** — register on the server via `use()`. Runs before every matching route, without repeating it in each `route()` call. Useful for logging, CORS headers, or auth that spans multiple endpoints:
+**Global / prefix-based** — register via `use()`. Runs before every route whose path starts with the given prefix. Useful for logging, CORS headers, or auth that spans multiple endpoints:
 
 ```cpp
 class Router : public ESP32WebServer::Router
@@ -490,44 +461,44 @@ class Router : public ESP32WebServer::Router
 public:
     Router()
     {
-        // Middleware on all paths of /
-        use("/", defaultHandler);
+        // Runs before every route
+        use("/", loggingMiddleware);
 
-        // Public routes — single handler
-        route("GET", "/hello", get_hello);
+        // Runs before every route under /api
+        use("/api", authMiddleware);
 
-        // Protected routes — middleware chain
-        route("GET", "/secret",  { authMiddleware, get_secret  });
-        route("POST", "/config", { authMiddleware, post_config });
+        route("GET", "/hello",      get_hello);
+        route("GET", "/api/data",   get_data);
+        route("POST", "/api/config", post_config);
     }
 };
 ```
 
-### **Execution Flow**
+### Execution flow
 
 ```
-Request → use() handlers (global, then prefix-matched, in registration order)
+Request → use() handlers (in registration order, prefix-matched)
               │
               ├─ finalize() called → Response sent immediately
               │
-              └─ not finalized ──→ per-route middleware chain
+              └─ not finalized ──→ per-route handler chain
                                         │
                                         ├─ finalize() called → Response sent
                                         │
-                                        └─ not finalized ──→ route handler → Response sent
+                                        └─ not finalized ──→ final handler → Response sent
 ```
 
-### **Common Middleware Patterns**
+### Common middleware patterns
 
 | Pattern | Where | Description |
 |---------|-------|-------------|
-| Logging | `use()` | Log every request without repeating per route |
-| CORS headers | `use()` | Add headers to every response |
+| Logging | `use("/")` | Log every request without repeating per route |
+| CORS headers | `use("/")` | Add headers to every response |
 | Auth (global) | `use("/api")` | Protect all `/api/*` routes at once |
 | Auth (per-route) | `route()` chain | Fine-grained control per endpoint |
-| Rate Limiting | `use()` | Track request counts, abort with `429` |
+| Rate limiting | `use("/")` | Track request counts, abort with `429` |
 
-➡️ See also: **📤 Response Handling** section above for all available response methods.
+➡️ See also: **📤 Response Handling** above for all available response methods.
 
 </details>
 
@@ -549,21 +520,29 @@ It provides:
 
 ![Admin Dashboard WiFi](.assets/admin.dashboard.wifi.png)
 
-#### Configuration
+#### Default credentials
 
-Default credentials are `admin` / `admin`. Override in code:
+| Field | Default |
+|-------|---------|
+| Username | `admin` |
+| Password | `admin` |
+
+Override in code before calling `start()`:
 
 ```cpp
 Server->defaultAdminCredentials("admin", "my-secure-password");
 Server->defaultAdminSalt("optional-salt");
 
-// Disable the dashboard entirely
-// Server->disableAdmin();
+// Disable the admin dashboard UI (keeps the /admin API routes)
+Server->disableAdminDashboard();
+
+// Disable the admin dashboard and all /admin routes entirely
+Server->disableAdmin();
 ```
 
 #### Permanent API Tokens
 
-Permanent tokens can be created from the **API Tokens** section of the admin dashboard. Unlike the session token (which expires after 1 hour), permanent tokens persist across reboots and never expire.
+Permanent tokens can be created from the **API Tokens** section of the admin dashboard. Unlike session tokens (which expire after 1 hour), permanent tokens persist across reboots and never expire.
 
 Use them in API requests via the `Authorization` header:
 
@@ -575,3 +554,5 @@ Authorization: <your-token>
 Tokens are stored in `/admin_perm_token.json` on LittleFS.
 
 </details>
+
+---

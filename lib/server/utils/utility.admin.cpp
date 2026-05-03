@@ -142,13 +142,13 @@ namespace ESP32WebServer
     void TokenManager::addToken(const std::string &token)
     {
         const unsigned long expiry = (millis() / 1000) + 3600;
-        ADMIN_TOKENS.insert({token, expiry});
+        _ADMIN_TOKENS.insert({token, expiry});
     }
 
     void TokenManager::removeToken(const std::string &token)
     {
-        const auto &entry = ADMIN_TOKENS.find(token);
-        ADMIN_TOKENS.erase(entry);
+        const auto &entry = _ADMIN_TOKENS.find(token);
+        _ADMIN_TOKENS.erase(entry);
     }
 
     std::string TokenManager::getToken(const std::string &username)
@@ -162,15 +162,15 @@ namespace ESP32WebServer
     {
         unsigned long currentTime = millis() / 1000;
 
-        const auto &entry = ADMIN_TOKENS.find(authToken);
-        if (entry == ADMIN_TOKENS.end())
+        const auto &entry = _ADMIN_TOKENS.find(authToken);
+        if (entry == _ADMIN_TOKENS.end())
         {
             return false;
         }
 
         if (currentTime > entry->second)
         {
-            ADMIN_TOKENS.erase(entry);
+            _ADMIN_TOKENS.erase(entry);
         }
 
         return true;

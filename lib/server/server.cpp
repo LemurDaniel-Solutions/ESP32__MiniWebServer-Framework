@@ -42,11 +42,15 @@ namespace ESP32WebServer
         WiFiUtility::instance().clearWiFiConfig();
     }
 
+    void MiniServer::disableAdminDashboard()
+    {
+        _is_dashboard_enabled = false;
+    }
     void MiniServer::disableAdmin()
     {
         _is_admin_enabled = false;
+        disableAdminDashboard();
     }
-
     void MiniServer::defaultAdminSalt(std::string &salt)
     {
         TokenManager::instance().setSalt(salt);
@@ -80,7 +84,7 @@ namespace ESP32WebServer
         }
 
         // Search for matching middlewares
-        for (const auto &entry : middlewares)
+        for (const auto &entry : _middlewares)
         {
             if (request.path.find(entry.first) != 0)
             {
@@ -104,8 +108,8 @@ namespace ESP32WebServer
         routeKey += ' ';
         routeKey += request.path;
 
-        auto entry = routes.find(routeKey);
-        if (entry == routes.end())
+        auto entry = _routes.find(routeKey);
+        if (entry == _routes.end())
         {
             response.NotFound();
             Response::send(client_socket, response);
@@ -132,8 +136,8 @@ namespace ESP32WebServer
 
     void MiniServer::use(const std::string &prefix, const RequestHandler &handler)
     {
-        auto entry = middlewares.find(prefix);
-        if (entry != middlewares.end())
+        auto entry = _middlewares.find(prefix);
+        if (entry != _middlewares.end())
         {
             std::vector<RequestHandler> &list = entry->second;
             list.push_back(handler);
@@ -141,7 +145,7 @@ namespace ESP32WebServer
         else
         {
             std::vector<RequestHandler> list{handler};
-            middlewares.insert({prefix, list});
+            _middlewares.insert({prefix, list});
         }
     }
     void MiniServer::use(const RequestHandler &handler)
@@ -157,7 +161,7 @@ namespace ESP32WebServer
 
     void MiniServer::addRoute(const std::string &method, const std::string &path, const std::vector<RequestHandler> &handlers)
     {
-        routes.insert({method + " " + path, handlers});
+        _routes.insert({method + " " + path, handlers});
     }
     void MiniServer::addRoute(const std::string &method, const std::string &path, const RequestHandler &handler)
     {
@@ -274,12 +278,19 @@ namespace ESP32WebServer
         addRoute("GET", path, handler);
     }
 
-    void MiniServer::root(const std::string &folder_path)
+    void MiniServer::root(const std::string &folder_path, const std::string &prefix)
     {
         std::vector<FileInfo> files = listFiles(folder_path);
         for (FileInfo info : files)
         {
-            staticFile("/" + info.name, info.path);
+            if (info.isDirectory)
+            {
+                root(info.path, prefix + info.name + "/");
+            }
+            else
+            {
+                staticFile(prefix + info.name, info.path);
+            }
         }
     }
 
@@ -369,7 +380,7 @@ namespace ESP32WebServer
 
         if (_is_admin_enabled)
         {
-            this->registerRouter(ESP32WebServer::AdminRouter());
+            this->registerRouter(ESP32WebServer::AdminRouter(_is_dashboard_enabled));
         }
 
         this->registerRouter(ESP32WebServer::UpdateRouter());

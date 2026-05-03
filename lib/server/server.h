@@ -53,7 +53,7 @@ namespace ESP32WebServer
         void index(const std::string &index_path);
 
         // Serve all files in there as root;
-        void root(const std::string &folder_path);
+        void root(const std::string &folder_path, const std::string &prefix = "/");
 
         // Add a static file response for a specific path
         void staticFile(const std::string &path, const std::string &file_path);
@@ -82,8 +82,11 @@ namespace ESP32WebServer
 
         int _is_running = false;
         int _is_admin_enabled = true;
+        int _is_dashboard_enabled = true;
         // Disables the admin dashboard entirly
         void disableAdmin();
+        void disableAdminDashboard();
+
         // Overrides the default admin credentials
         void defaultAdminSalt(std::string &salt);
         void defaultAdminCredentials(std::string &username, std::string &password);
@@ -95,8 +98,8 @@ namespace ESP32WebServer
         void serveFile(int client_socket, Response &res);
 
         // Map of "METHOD PATH" to handler function for dynamic routes
-        std::map<std::string, std::vector<RequestHandler>> routes;
-        std::map<std::string, std::vector<RequestHandler>> middlewares;
+        std::map<std::string, std::vector<RequestHandler>> _routes;
+        std::map<std::string, std::vector<RequestHandler>> _middlewares;
         void addRoute(const std::string &method, const std::string &path, const RequestHandler &handler);
         void addRoute(const std::string &method, const std::string &path, const std::vector<RequestHandler> &handlers);
 

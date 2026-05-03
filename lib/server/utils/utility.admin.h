@@ -74,7 +74,7 @@ namespace ESP32WebServer
         TokenManager(const TokenManager &) = delete;
         void operator=(const TokenManager &) = delete;
 
-        std::map<std::string, unsigned long> ADMIN_TOKENS;
+        std::map<std::string, unsigned long> _ADMIN_TOKENS;
     };
 
     void get_AdminLogin(Request &req, Response &res);
@@ -126,18 +126,21 @@ namespace ESP32WebServer
     class AdminRouter : public ESP32WebServer::Router
     {
     public:
-        AdminRouter()
+        AdminRouter(int enableDashboard)
         {
             use("/admin", auth_handler);
 
+            // Returns the html sites
+            if (enableDashboard)
+            {
+                route("GET", "/admin", get_AdminLogin);
+                route("GET", "/admin/dashboard", get_AdminDashboard);
+            }
+
             // Unprotected Routes
-            route("GET", "/admin", get_AdminLogin);
             route("GET", "/admin/logout", get_AdminLogout);
             route("GET", "/admin/login", verify_AdminAuth);
             route("POST", "/admin/login", post_AdminLogin);
-
-            // Returns the html sites
-            route("GET", "/admin/dashboard", get_AdminDashboard);
 
             // Return 401 if the token is not valid or missing for any /admin/* route
             route("POST", "/admin/auth", post_AdminUpdateAuth);

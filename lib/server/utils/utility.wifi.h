@@ -33,8 +33,8 @@ namespace ESP32WebServer
     private:
         WiFiUtility() = default;
 
-        const std::string DEFAULT_WIFI_SSID = "ESP32_MiniWebServer";
-        const int WIFI_TIMEOUT_SEC = 30;
+        const std::string _DEFAULT_WIFI_SSID = "ESP32_MiniWebServer";
+        const int _WIFI_TIMEOUT_SEC = 30;
 
     public:
         static WiFiUtility &instance()
