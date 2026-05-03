@@ -51,7 +51,7 @@ namespace ESP32WebServer
      *
      **/
 
-    std::string unzip(const std::string &filePath);
+    void unzip(const std::string &filePath, const std::string &targetFolder);
 
     /*-------------------------------------------------------------------------------------------------
      *
@@ -59,9 +59,9 @@ namespace ESP32WebServer
      *
      **/
 
-    std::vector<FileInfo> listFiles(const std::string &folderPath, std::vector<FileInfo> &files, const std::string &prefix = "");
     std::vector<FileInfo> listFiles(const std::string &folderPath);
     void clearFolder(const std::string &folderPath);
+    void removeFolder(const std::string &folderPath);
 
     /*-------------------------------------------------------------------------------------------------
      *
@@ -69,6 +69,7 @@ namespace ESP32WebServer
      *
      **/
 
+    void moveFile(const std::string &filePath, const std::string &destinationFolder, const std::string &relativePath = "");
     int removeFile(const std::string &filePath);
 
     /*-------------------------------------------------------------------------------------------------

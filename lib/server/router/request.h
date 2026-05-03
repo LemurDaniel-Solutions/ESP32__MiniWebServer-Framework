@@ -73,7 +73,7 @@ namespace ESP32WebServer
         void clean();
         std::string text();
         JsonDocument json();
-        std::string file();
+        std::string file(const std::string &name);
         size_t chunks(uint8_t *chunk, size_t chunkSize);
     };
 

@@ -7,7 +7,6 @@
 namespace ESP32WebServer
 {
 
-
     /*-------------------------------------------------------------------------------------------------
      *
      * RequestBody
@@ -55,14 +54,14 @@ namespace ESP32WebServer
         return bodyJson;
     }
 
-    std::string RequestBody::file()
+    std::string RequestBody::file(const std::string &name)
     {
         if (!filePath.empty())
         {
             return filePath;
         }
 
-        filePath = getTempFolder() + "/" + randomString(4);
+        filePath = getTempFolder() + "/" + name;
         File tmpFile = LittleFS.open(filePath.c_str(), "w", true);
         if (!tmpFile)
         {
@@ -80,6 +79,7 @@ namespace ESP32WebServer
             if (n <= 0)
                 break;
             tmpFile.write((uint8_t *)chunk, n);
+            written += n;
         }
 
         tmpFile.close();

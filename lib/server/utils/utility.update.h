@@ -13,6 +13,7 @@
 
 #include <router/router.h>
 #include <utils/utility.admin.h>
+#include <utils/utility.file.h>
 
 namespace ESP32WebServer
 {

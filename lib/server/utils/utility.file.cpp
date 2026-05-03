@@ -9,7 +9,7 @@ namespace ESP32WebServer
 
     std::string getTempFolder()
     {
-        return FOLDER_TEMP + randomString(8);
+        return std::string(FOLDER_TEMP) + "/" + randomString(8);
     }
 
     bool fileExists(const std::string &filePath)
@@ -28,7 +28,7 @@ namespace ESP32WebServer
         info.baseName = info.name;
         info.extension = "";
 
-        size_t dot = info.name.find_last_of('.');
+        size_t dot = info.name.find_first_of('.');
         if (dot != std::string::npos && dot > 0)
         {
             info.extension = info.name.substr(dot);
@@ -111,49 +111,51 @@ namespace ESP32WebServer
      *
      **/
 
-    std::string unzip(const std::string &filePath)
+    void unzip(const std::string &filePath, const std::string &targetFolder)
     {
+        LittleFS.mkdir(targetFolder.c_str());
+
         const FileInfo &info = getFileInfo(filePath);
 
-        const std::string unzippedFolder = getTempFolder();
-        LittleFS.mkdir(unzippedFolder.c_str());
-
-        if (info.extension.find(".tar") == 0)
+        Serial.printf("Extension is %s", info.extension.c_str());
+        if (info.extension == ".tar")
         {
             TarUnpacker *TARUnpacker = new TarUnpacker();
 
-            TARUnpacker->haltOnError(true);
-            TARUnpacker->setTarVerify(true);
-            TARUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+            TARUnpacker->haltOnError(false);
+            TARUnpacker->setTarVerify(false);
+            TARUnpacker->setupFSCallbacks([]()
+                                          { return (unsigned long long)LittleFS.totalBytes(); }, []()
+                                          { return (unsigned long long)LittleFS.totalBytes() - LittleFS.usedBytes(); });
             TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
             TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
             TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);
 
-            if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str()))
+            if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, targetFolder.c_str()))
             {
                 Serial.printf("tarExpander failed with return code #%d\n", TARUnpacker->tarGzGetError());
             }
         }
-        else if (info.extension.find(".tar.gz") == 0)
+        else if (info.extension == ".tar.gz")
         {
             TarGzUnpacker *TARGZUnpacker = new TarGzUnpacker();
 
-            TARGZUnpacker->haltOnError(true);                                                            // stop on fail (manual restart/reset required)
-            TARGZUnpacker->setTarVerify(true);                                                           // true = enables health checks but slows down the overall process
-            TARGZUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);                        // prevent the partition from exploding, recommended
+            TARGZUnpacker->haltOnError(false);
+            TARGZUnpacker->setTarVerify(false);
+            TARGZUnpacker->setupFSCallbacks([]()
+                                            { return (unsigned long long)LittleFS.totalBytes(); }, []()
+                                            { return (unsigned long long)LittleFS.totalBytes() - LittleFS.usedBytes(); });
             TARGZUnpacker->setGzProgressCallback(BaseUnpacker::defaultProgressCallback);                 // targzNullProgressCallback or defaultProgressCallback
             TARGZUnpacker->setLoggerCallback(BaseUnpacker::targzPrintLoggerCallback);                    // gz log verbosity
             TARGZUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);                // prints the untarring progress for each individual file
             TARGZUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback); // print the filenames as they're expanded
             TARGZUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);                // tar log verbosity
 
-            if (!TARGZUnpacker->tarGzExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str(), nullptr))
+            if (!TARGZUnpacker->tarGzExpander(LittleFS, filePath.c_str(), LittleFS, targetFolder.c_str(), nullptr))
             {
                 Serial.printf("tarGzExpander+intermediate file failed with return code #%d\n", TARGZUnpacker->tarGzGetError());
             }
         }
-
-        return unzippedFolder;
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -162,8 +164,10 @@ namespace ESP32WebServer
      *
      **/
 
-    std::vector<FileInfo> listFiles(const std::string &folderPath, std::vector<FileInfo> &files, const std::string &prefix)
+    std::vector<FileInfo> listFiles(const std::string &folderPath)
     {
+        std::vector<FileInfo> files;
+
         File folder = LittleFS.open(folderPath.c_str());
         if (!folder || !folder.isDirectory())
         {
@@ -182,27 +186,40 @@ namespace ESP32WebServer
         return files;
     }
 
-    std::vector<FileInfo> listFiles(const std::string &folderPath)
-    {
-        std::vector<FileInfo> files;
-        return listFiles(folderPath, files);
-    }
-
     void clearFolder(const std::string &folderPath)
     {
         File dir = LittleFS.open(folderPath.c_str());
+        
         if (!dir || !dir.isDirectory())
         {
             LittleFS.mkdir(folderPath.c_str());
             return;
         }
+
         File entry = dir.openNextFile();
         while (entry)
         {
-            LittleFS.remove(entry.path());
-            entry = dir.openNextFile();
+            if (entry.isDirectory())
+            {
+                std::string path = entry.path();
+                entry.close();
+                removeFolder(path);
+            }
+            else
+            {
+                std::string path = entry.path();
+                entry.close();
+                LittleFS.remove(path.c_str());
+                entry = dir.openNextFile();
+            }
         }
         dir.close();
+    }
+
+    void removeFolder(const std::string &folderPath)
+    {
+        clearFolder(folderPath);
+        LittleFS.rmdir(folderPath.c_str());
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -210,25 +227,43 @@ namespace ESP32WebServer
      * Handle Files
      *
      **/
+    void moveFile(const std::string &filePath, const std::string &destinationFolder, const std::string &relativePath)
+    {
+        if (!fileExists(filePath))
+        {
+            Serial.printf("❌ CRITICAL: Failed to move file %s!\n", filePath.c_str());
+            return;
+        }
+
+        const FileInfo &info = getFileInfo(filePath);
+        std::string destinationPath = destinationFolder + "/" + info.name;
+
+        if (!relativePath.empty())
+        {
+            std::string suffix = filePath.substr(relativePath.size());
+            std::string newPath = destinationFolder + suffix;
+        }
+
+        Serial.printf("ℹ️ Move from %s to %s", filePath.c_str(), destinationPath.c_str());
+        // LittleFS.rename(filePath.c_str(), destinationPath.c_str());
+    }
 
     int removeFile(const std::string &filePath)
     {
-        if (fileExists(filePath))
+        if (!fileExists(filePath))
         {
-            if (LittleFS.remove(filePath.c_str()))
-            {
-                Serial.printf("✅ Successfully removed file %s\n", filePath.c_str());
-                return 0;
-            }
-            else
-            {
-                Serial.printf("❌ CRITICAL: Failed to remove file %s!\n", filePath.c_str());
-                return -1;
-            }
+            Serial.printf("ℹ️ No file found at %s to remove.\n", filePath.c_str());
+            return -1;
+        }
+
+        if (LittleFS.remove(filePath.c_str()))
+        {
+            Serial.printf("✅ Successfully removed file %s\n", filePath.c_str());
+            return 0;
         }
         else
         {
-            Serial.printf("ℹ️ No file found at %s to remove.\n", filePath.c_str());
+            Serial.printf("❌ CRITICAL: Failed to remove file %s!\n", filePath.c_str());
             return -1;
         }
     }
@@ -288,5 +323,4 @@ namespace ESP32WebServer
 
         return true;
     }
-
 }
