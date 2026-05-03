@@ -10,7 +10,7 @@ namespace ESP32WebServer
     {
         while (true)
         {
-            vTaskDelay(pdMS_TO_TICKS(30000));
+            vTaskDelay(pdMS_TO_TICKS(15000));
             WiFiUtility::instance().setup();
         }
     }
@@ -201,10 +201,12 @@ namespace ESP32WebServer
     */
     void WiFiUtility::setup()
     {
-        if (isNetworkReady())
+        if (isWiFiConnected())
         {
             return;
         }
+
+        bool wasApMode = isApMode();
 
         std::vector<WiFiConfig> nearby = getNearestNetworks();
         for (const WiFiConfig &network : nearby)
@@ -215,12 +217,12 @@ namespace ESP32WebServer
             }
         }
 
-        if (isNetworkReady())
+        if (wasApMode)
         {
-            return;
+            Serial.println("Already in AP Mode...");
         }
 
-        if (nearby.empty())
+        else if (nearby.empty())
         {
             Serial.println("No saved networks in range, starting AP mode...");
         }
