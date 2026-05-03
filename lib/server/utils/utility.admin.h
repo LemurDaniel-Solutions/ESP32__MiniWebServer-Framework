@@ -66,7 +66,7 @@ namespace ESP32WebServer
         std::string addPermToken(const std::string &name);
         void removePermToken(const std::string &name);
         bool checkPermToken(const std::string &authToken);
-        std::map<std::string, std::string> listPermTokens();
+        std::vector<std::string> listPermTokens();
 
     private:
         TokenManager() {}
@@ -75,6 +75,8 @@ namespace ESP32WebServer
         void operator=(const TokenManager &) = delete;
 
         std::map<std::string, unsigned long> _ADMIN_TOKENS;
+        std::map<std::string, std::string> _PERM_TOKENS;
+        int _hasReadFile = false;
     };
 
     void get_AdminLogin(Request &req, Response &res);

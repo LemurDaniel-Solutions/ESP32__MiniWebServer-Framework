@@ -186,7 +186,12 @@ namespace ESP32WebServer
     {
         JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
 
-        doc[name] = generateSHA256(randomString() + String(millis()).c_str(), name);
+        const std::string &token = generateSHA256(randomString() + String(millis()).c_str(), name);
+
+        doc[name] = token;
+
+        // Temp In-Memory to not always read from Flash.
+        _PERM_TOKENS.insert({token, name});
 
         writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
 
@@ -198,29 +203,43 @@ namespace ESP32WebServer
 
         doc.remove(name);
 
+        _hasReadFile = false;
+        _PERM_TOKENS = {};
+
         writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
     }
     bool TokenManager::checkPermToken(const std::string &authToken)
     {
-        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
-
-        for (JsonPair entry : doc.as<JsonObject>())
+        if (!_hasReadFile)
         {
-            if (entry.value().as<std::string>() == authToken)
-                return true;
+            listPermTokens();
         }
 
-        return false;
+        return _PERM_TOKENS.find(authToken) != _PERM_TOKENS.end();
     }
-    std::map<std::string, std::string> TokenManager::listPermTokens()
+    std::vector<std::string> TokenManager::listPermTokens()
     {
-        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
 
-        std::map<std::string, std::string> result;
-        for (JsonPair entry : doc.as<JsonObject>())
+        if (!_hasReadFile)
         {
-            result[entry.key().c_str()] = entry.value().as<std::string>();
+            JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+
+            for (JsonPair entry : doc.as<JsonObject>())
+            {
+                _PERM_TOKENS.insert(std::make_pair(
+                    entry.value().as<std::string>(),
+                    entry.key().c_str()));
+            }
+
+            _hasReadFile = true;
         }
+
+        std::vector<std::string> result;
+        for (const auto &entry : _PERM_TOKENS)
+        {
+            result.push_back(entry.second);
+        }
+
         return result;
     }
 
@@ -1191,13 +1210,13 @@ namespace ESP32WebServer
 
     void get_PermTokens(Request &req, Response &res)
     {
-        const std::map<std::string, std::string> tokens = TokenManager::instance().listPermTokens();
+        const std::vector<std::string> tokens = TokenManager::instance().listPermTokens();
 
         JsonDocument doc;
         JsonArray arr = doc["tokens"].to<JsonArray>();
-        for (const auto &entry : tokens)
+        for (const std::string &name : tokens)
         {
-            arr.add(entry.first);
+            arr.add(name);
         }
 
         res.OK().json(doc);
