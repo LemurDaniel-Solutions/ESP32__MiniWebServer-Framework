@@ -44,23 +44,27 @@ It Should work with following families:
 📦 ESP32 Mini WebServer Framework
 ├── 📁 lib/
 │   └── 📁 server/
-│       ├── 🌐 server.h/.cpp        # Core web server
-│       ├── 🛤️ router.h             # Routing engine
-│       ├── 📥 request.h            # HTTP request handling
-│       ├── 📤 response.h           # HTTP response handling
-│       ├── 🔐 utility.admin.h      # Admin Dashboard
-│       ├── 🛜 utility.wifi.h       # WiFi utility
-│       └── 📂 utility.file.h       # File utility
-├── 📁 src/                         # Example application
+│       ├── 🌐 server.h/.cpp            # Core web server
+│       ├── 📁 router/
+│       │   ├── 🛤️ router.h/.cpp        # Routing engine
+│       │   ├── 📥 request.h/.cpp       # HTTP request handling
+│       │   └── 📤 response.h/.cpp      # HTTP response handling
+│       └── 📁 utils/
+│           ├── 🔐 utility.admin.h/.cpp # Admin Dashboard
+│           ├── 🛜 utility.wifi.h/.cpp  # WiFi utility
+│           ├── 📂 utility.file.h/.cpp  # File utility
+│           └── 🔄 utility.update.h/.cpp # OTA update utility
+├── 📁 src/                             # Example application
 │   ├── 🎯 main.cpp
 │   └── 📁 routes/
 │       └── 🛤️ routes.example.h/.cpp
 ├── 📁 data/
 │   └── 📁 web/
-│       └── 🎨 index.html           # Example web interface
-├── 📋 library.json                 # PlatformIO library config
-├── ⚙️ platformio.ini               # Build configuration
-└── 📖 README.md                    # This file
+│       ├── 🎨 index.html               # Example web interface
+│       └── 🎨 main.css                 # Example styles
+├── 📋 library.json                     # PlatformIO library config
+├── ⚙️ platformio.ini                   # Build configuration
+└── 📖 README.md                        # This file
 ```
 
 ## 📦 Installation
@@ -226,7 +230,7 @@ Declare handler functions and a `Router` class that registers them:
 #include <Arduino.h>
 #include <WiFi.h>
 
-#include <router.h>
+#include <router/router.h>
 
 namespace routes_example
 {
