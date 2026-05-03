@@ -227,7 +227,7 @@ namespace ESP32WebServer
 
         if (request.headers.find("Content-Length") != request.headers.end())
         {
-            request.body.contentType = std::stoul(request.headers["Content-Length"]);
+            request.body.contentLength = std::stoul(request.headers["Content-Length"]);
         }
 
         return request;

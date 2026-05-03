@@ -1134,7 +1134,7 @@ namespace ESP32WebServer
     {
         const JsonDocument &body = req.body.json();
 
-        if (!body["username"].is<std::string>() && !body["password"].is<std::string>())
+        if (!body["username"].is<std::string>() || !body["password"].is<std::string>())
         {
             Serial.println("Missing username or password in login request");
             res.status(400).text("Invalid username or password");
