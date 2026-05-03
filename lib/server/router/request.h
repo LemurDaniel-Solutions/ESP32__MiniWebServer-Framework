@@ -27,22 +27,35 @@ namespace ESP32WebServer
     struct SocketReader
     {
         int clientSocket = -1;
-        std::vector<uint8_t> bytes;
+        uint8_t bytes[256];
+        size_t bytesLen = 0;
 
-        void prepend(std::vector<uint8_t> bytes)
+        void prepend(const uint8_t *data, size_t len)
         {
-            this->bytes = std::move(bytes);
+            bytesLen = std::min(len, sizeof(bytes));
+            memcpy(bytes, data, bytesLen);
         }
         int read(void *buf, size_t len)
         {
-            if (!bytes.empty())
+            size_t total = 0;
+
+            if (bytesLen > 0)
             {
-                size_t n = std::min(len, bytes.size());
-                memcpy(buf, bytes.data(), n);
-                bytes.erase(bytes.begin(), bytes.begin() + n);
-                return (int)n;
+                size_t n = std::min(len, bytesLen);
+                memcpy(buf, bytes, n);
+                memmove(bytes, bytes + n, bytesLen - n);
+                bytesLen -= n;
+                total += n;
+
+                if (total >= len)
+                    return (int)total;
             }
-            return ::read(clientSocket, buf, len);
+
+            int n = ::read(clientSocket, (uint8_t *)buf + total, len - total);
+            if (n > 0)
+                total += n;
+
+            return (int)total;
         }
     };
 
@@ -113,6 +126,7 @@ namespace ESP32WebServer
         std::string path;
         std::map<std::string, std::string> headers;
         std::map<std::string, std::string> cookies;
+        std::map<std::string, std::string> query;
 
         RequestBody body;
 

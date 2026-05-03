@@ -134,8 +134,9 @@ namespace ESP32WebServer
             return headerRaw;
 
         // Phase 2: bytes after headers prepend for next read
-        std::vector<uint8_t> body(header.begin() + headerEnd + 4, header.end());
-        socket.prepend(body);
+        const uint8_t *bodyStart = reinterpret_cast<const uint8_t *>(header.data()) + headerEnd + 4;
+        size_t bodyPrefixLen = header.size() - (headerEnd + 4);
+        socket.prepend(bodyStart, bodyPrefixLen);
 
         // Phase 3: split headers into list of lines
         header.resize(headerEnd);
@@ -185,6 +186,21 @@ namespace ESP32WebServer
         request.method = firstLine[0];
         request.path = firstLine[1];
 
+        // Reading URL Parameters
+        if (request.path.find("?") != std::string::npos)
+        {
+            const std::vector<std::string> &segments = split(request.path, "?");
+            request.path = segments[0];
+
+            const std::vector<std::string> &query = split(segments[1], "&");
+            for (const std::string &param : query)
+            {
+                const std::vector<std::string> &pair = split(param, "=");
+                request.query.insert({pair[0], pair[1]});
+            }
+        }
+
+        // Reading headers
         for (size_t i = 1; i < headerRaw.size(); i++)
         {
             std::vector<std::string> line = split(headerRaw[i], ":");
@@ -192,6 +208,7 @@ namespace ESP32WebServer
                 request.headers[line[0]] = line[1];
         }
 
+        // Parsing Cookie Header
         if (request.headers.find("Cookie") != request.headers.end())
         {
             std::vector<std::string> cookieHeader = split(request.headers["Cookie"], ";");
@@ -208,15 +225,9 @@ namespace ESP32WebServer
             request.body.contentType = request.headers["Content-Type"];
         }
 
-        auto clIt = request.headers.find("Content-Length");
-        if (clIt != request.headers.end())
+        if (request.headers.find("Content-Length") != request.headers.end())
         {
-            for (char c : clIt->second)
-            {
-                if (c < '0' || c > '9')
-                    break;
-                request.body.contentLength = request.body.contentLength * 10 + (c - '0');
-            }
+            request.body.contentType = std::stoul(request.headers["Content-Length"]);
         }
 
         return request;

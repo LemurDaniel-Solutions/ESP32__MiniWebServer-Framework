@@ -126,6 +126,9 @@ void setup()
     // Server->root("/web");
     // Server->index("/web/index.html");
 
+    // Optional: Take care of CORS
+    // Server->use(Server->cors());
+
     Server->get("/hello", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
         res.text("Hello from ESP32!").OK();
     });
@@ -418,6 +421,33 @@ Server->post("/ota", [](ESP32WebServer::Request &req, ESP32WebServer::Response &
     }
 });
 ```
+
+</details>
+
+---
+
+<details>
+<summary>🔍 URL Query Parameters</summary>
+
+Query parameters from the URL (e.g. `/search?term=hello&page=2`) are parsed automatically and stored in `req.query` as a `std::map<std::string, std::string>`.
+
+```cpp
+Server->get("/search", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+    if (req.query.find("term") == req.query.end()) {
+        res.text("Missing parameter: term").status(400);
+        return;
+    }
+    std::string term = req.query["term"];
+    res.text("Searching for: " + term).OK();
+});
+```
+
+| Access | Description |
+|--------|-------------|
+| `req.query["key"]` | Value of a query parameter |
+| `req.query.find("key") != req.query.end()` | Check if a parameter is present |
+
+> Parameters are not decoded — percent-encoding (e.g. `%20`) is left as-is.
 
 </details>
 

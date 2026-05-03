@@ -14,6 +14,7 @@
 ## Server / HTTP
 
 - [ ] **Route parameters** — support `/user/:id` style dynamic segments
+- [ ] **Query parameters** — URL decode query parameters
 - [✅] **DELETE and PATCH direct methods** — only GET, POST, PUT wired up currently
 - [✅] **Chunked / streaming response** — large payloads currently buffered entirely in RAM
 - [✅] **CORS middleware** — built-in helper for cross-origin headers
