@@ -20,7 +20,21 @@ namespace ESP32WebServer
      *
      **/
 
-    bool TokenManager::setCredentials(std::string username, std::string password)
+    bool TokenManager::setSalt(const std::string &salt)
+    {
+        JsonDocument doc = JsonDocument();
+
+        if (fileExists(ADMIN_CREDENTIALS_FILE))
+        {
+            doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
+        }
+
+        doc["admin_salt"] = salt;
+        writeJsonFile(ADMIN_CREDENTIALS_FILE, doc);
+
+        return true;
+    }
+    bool TokenManager::setCredentials(const std::string &username, const std::string &password)
     {
         JsonDocument doc = JsonDocument();
 
@@ -878,7 +892,7 @@ namespace ESP32WebServer
     {
         Serial.println("Checking authentication for admin route");
 
-        const auto &entry = req.cookies.find(TokenManager::instance().DEFAULT_ADMIN_COOKIE);
+        const auto &entry = req.cookies.find(DEFAULT_ADMIN_COOKIE);
 
         if (entry == req.cookies.end())
         {
@@ -938,7 +952,7 @@ namespace ESP32WebServer
 
     void get_AdminLogout(Request &req, Response &res)
     {
-        const auto &entry = req.cookies.find(TokenManager::instance().DEFAULT_ADMIN_COOKIE);
+        const auto &entry = req.cookies.find(DEFAULT_ADMIN_COOKIE);
 
         if (entry != req.cookies.end())
         {

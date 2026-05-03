@@ -13,22 +13,37 @@
 #include <string>
 #include <vector>
 
+#define FOLDER_TEMP "/tmp"
+#define FOLDER_WEB "/web"
+
 namespace ESP32WebServer
 {
 
-    const std::string TEMP_FOLDER = "/tmp";
-
     struct FileInfo
     {
+        int isDirectory;
         std::string name;
         std::string path;
         std::string extension;
         std::string baseName;
     };
 
-    bool fileExists(const std::string &filePath);
-    std::string randomString(int size = 32);
     std::string getTempFolder();
+    FileInfo getFileInfo(const std::string &filePath);
+    bool fileExists(const std::string &filePath);
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Helper Methods
+     *
+     **/
+
+    std::string randomString(int size = 32);
+    std::string trim(const std::string &s);
+
+    size_t findBytes(const std::vector<uint8_t> &data, const std::string &pattern, size_t start = 0);
+    std::string extractString(const std::vector<uint8_t> &data, size_t start, size_t end);
+    std::vector<std::string> split(const std::string &text, const std::string &splitter);
 
     /*-------------------------------------------------------------------------------------------------
      *

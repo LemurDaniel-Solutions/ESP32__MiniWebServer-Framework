@@ -7,10 +7,44 @@
 namespace ESP32WebServer
 {
 
+    std::string getTempFolder()
+    {
+        return FOLDER_TEMP + randomString(8);
+    }
+
     bool fileExists(const std::string &filePath)
     {
         return LittleFS.exists(filePath.c_str());
     }
+
+    FileInfo getFileInfo(const std::string &filePath)
+    {
+        File file = LittleFS.open(filePath.c_str(), "r");
+
+        FileInfo info;
+        info.isDirectory = file.isDirectory();
+        info.name = file.name();
+        info.path = file.path();
+        info.baseName = info.name;
+        info.extension = "";
+
+        size_t dot = info.name.find_last_of('.');
+        if (dot != std::string::npos && dot > 0)
+        {
+            info.extension = info.name.substr(dot);
+            info.baseName = info.name.substr(0, dot);
+        }
+
+        file.close();
+
+        return info;
+    }
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Helper Methods
+     *
+     **/
 
     std::string randomString(int size)
     {
@@ -24,9 +58,51 @@ namespace ESP32WebServer
         return result;
     }
 
-    std::string getTempFolder()
+    std::string trim(const std::string &s)
     {
-        return TEMP_FOLDER + randomString(8);
+        size_t start = s.find_first_not_of(" \t");
+        if (start == std::string::npos)
+            return {};
+        size_t end = s.find_last_not_of(" \t");
+        return s.substr(start, end - start + 1);
+    }
+
+    size_t findBytes(const std::vector<uint8_t> &data, const std::string &pattern, size_t start)
+    {
+        size_t pat_length = pattern.length();
+        if (pat_length == 0 || data.size() < pat_length || start > data.size() - pat_length)
+            return std::string::npos;
+
+        for (size_t i = start; i <= data.size() - pat_length; ++i)
+        {
+            if (memcmp(data.data() + i, pattern.c_str(), pat_length) == 0)
+                return i;
+        }
+
+        return std::string::npos;
+    }
+
+    std::string extractString(const std::vector<uint8_t> &data, size_t start, size_t end)
+    {
+        return std::string(reinterpret_cast<const char *>(data.data() + start), end - start);
+    }
+
+    std::vector<std::string> split(const std::string &text, const std::string &splitter)
+    {
+        std::vector<std::string> elements;
+
+        size_t pos = 0;
+        while (pos < text.size())
+        {
+            size_t end = text.find(splitter, pos);
+            if (end == std::string::npos)
+                end = text.size();
+
+            elements.push_back(trim(text.substr(pos, end - pos)));
+            pos = end + splitter.size();
+        }
+
+        return elements;
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -37,21 +113,44 @@ namespace ESP32WebServer
 
     std::string unzip(const std::string &filePath)
     {
+        const FileInfo &info = getFileInfo(filePath);
+
         const std::string unzippedFolder = getTempFolder();
         LittleFS.mkdir(unzippedFolder.c_str());
 
-        TarUnpacker *TARUnpacker = new TarUnpacker();
-
-        TARUnpacker->haltOnError(true);
-        TARUnpacker->setTarVerify(true);
-        TARUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
-        TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
-        TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
-        TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);
-
-        if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str()))
+        if (info.extension.find(".tar") == 0)
         {
-            Serial.printf("tarExpander failed with return code #%d\n", TARUnpacker->tarGzGetError());
+            TarUnpacker *TARUnpacker = new TarUnpacker();
+
+            TARUnpacker->haltOnError(true);
+            TARUnpacker->setTarVerify(true);
+            TARUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+            TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
+            TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
+            TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);
+
+            if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str()))
+            {
+                Serial.printf("tarExpander failed with return code #%d\n", TARUnpacker->tarGzGetError());
+            }
+        }
+        else if (info.extension.find(".tar.gz") == 0)
+        {
+            TarGzUnpacker *TARGZUnpacker = new TarGzUnpacker();
+
+            TARGZUnpacker->haltOnError(true);                                                            // stop on fail (manual restart/reset required)
+            TARGZUnpacker->setTarVerify(true);                                                           // true = enables health checks but slows down the overall process
+            TARGZUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);                        // prevent the partition from exploding, recommended
+            TARGZUnpacker->setGzProgressCallback(BaseUnpacker::defaultProgressCallback);                 // targzNullProgressCallback or defaultProgressCallback
+            TARGZUnpacker->setLoggerCallback(BaseUnpacker::targzPrintLoggerCallback);                    // gz log verbosity
+            TARGZUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);                // prints the untarring progress for each individual file
+            TARGZUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback); // print the filenames as they're expanded
+            TARGZUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);                // tar log verbosity
+
+            if (!TARGZUnpacker->tarGzExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str(), nullptr))
+            {
+                Serial.printf("tarGzExpander+intermediate file failed with return code #%d\n", TARGZUnpacker->tarGzGetError());
+            }
         }
 
         return unzippedFolder;
@@ -71,30 +170,13 @@ namespace ESP32WebServer
             throw std::runtime_error("Path is not a directory");
         }
 
-        File file = folder.openNextFile();
-        while (file)
+        std::string filePath = folder.getNextFileName().c_str();
+        while (!filePath.empty())
         {
-            if (file.isDirectory())
-            {
-                listFiles(folder.path(), files, prefix + "/" + folder.name());
-                continue;
-            }
-
-            FileInfo info;
-            info.name = file.name();
-            info.path = file.path();
-            info.baseName = info.name;
-            info.extension = "";
-
-            size_t dot = info.name.find_last_of('.');
-            if (dot != std::string::npos && dot > 0)
-            {
-                info.extension = info.name.substr(dot);
-                info.baseName = info.name.substr(0, dot);
-            }
+            const FileInfo &info = getFileInfo(filePath);
 
             files.push_back(info);
-            file = folder.openNextFile();
+            filePath = folder.getNextFileName().c_str();
         }
 
         return files;

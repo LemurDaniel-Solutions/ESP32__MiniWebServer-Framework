@@ -86,11 +86,6 @@ namespace ESP32WebServer
     class Request
     {
     private:
-        static std::string trim(const std::string &s);
-        static size_t findBytes(const std::vector<uint8_t> &data, const std::string &pattern, size_t start = 0);
-        static std::string extractString(const std::vector<uint8_t> &data, size_t start, size_t end);
-        static std::vector<std::string> split(const std::string &text, const std::string &splitter);
-
         std::vector<std::string> extractHeader();
 
         SocketReader socket;

@@ -16,19 +16,16 @@
 #include <utils/utility.wifi.h>
 
 #define ADMIN_CREDENTIALS_FILE "/admin_credentials.json"
+#define DEFAULT_ADMIN_COOKIE "adminToken"
+#define DEFAULT_ADMIN_USER "admin"
+#define DEFAULT_ADMIN_PWD "admin"
+#define DEFAULT_ADMIN_SALT "5B63F3F0104D1649B8E1A9C9E5F2A1"
 
 namespace ESP32WebServer
 {
     class TokenManager
     {
     public:
-        std::string DEFAULT_ADMIN_COOKIE = "adminToken";
-
-        std::string DEFAULT_ADMIN_USER = "admin";
-        std::string DEFAULT_ADMIN_PWD = "admin";
-
-        std::string DEFAULT_ADMIN_SALT = "5B63F3F0104D1649B8E1A9C9E5F2A1";
-
         static TokenManager &instance()
         {
             static TokenManager _instance;
@@ -41,7 +38,8 @@ namespace ESP32WebServer
          *
          **/
 
-        bool setCredentials(std::string username, std::string password);
+        bool setSalt(const std::string &salt);
+        bool setCredentials(const std::string &username, const std::string &password);
         std::vector<std::string> getCredentials();
 
         bool checkCredentials(const std::string &username, const std::string &password);

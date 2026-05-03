@@ -49,13 +49,12 @@ namespace ESP32WebServer
 
     void MiniServer::defaultAdminSalt(std::string &salt)
     {
-        TokenManager::instance().DEFAULT_ADMIN_SALT = salt;
+        TokenManager::instance().setSalt(salt);
     }
 
     void MiniServer::defaultAdminCredentials(std::string &username, std::string &password)
     {
-        TokenManager::instance().DEFAULT_ADMIN_USER = username;
-        TokenManager::instance().DEFAULT_ADMIN_PWD = password;
+        TokenManager::instance().setCredentials(username, password);
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -366,7 +365,7 @@ namespace ESP32WebServer
             return 0;
         }
 
-        clearFolder(TEMP_FOLDER);
+        clearFolder(FOLDER_TEMP);
 
         if (_is_admin_enabled)
         {

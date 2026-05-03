@@ -102,59 +102,6 @@ namespace ESP32WebServer
 
     /*-------------------------------------------------------------------------------------------------
      *
-     * Request — private static helpers
-     *
-     **/
-
-    std::string Request::trim(const std::string &s)
-    {
-        size_t start = s.find_first_not_of(" \t");
-        if (start == std::string::npos)
-            return {};
-        size_t end = s.find_last_not_of(" \t");
-        return s.substr(start, end - start + 1);
-    }
-
-    size_t Request::findBytes(const std::vector<uint8_t> &data, const std::string &pattern, size_t start)
-    {
-        size_t pat_length = pattern.length();
-        if (pat_length == 0 || data.size() < pat_length || start > data.size() - pat_length)
-            return std::string::npos;
-
-        for (size_t i = start; i <= data.size() - pat_length; ++i)
-        {
-            if (memcmp(data.data() + i, pattern.c_str(), pat_length) == 0)
-                return i;
-        }
-
-        return std::string::npos;
-    }
-
-    std::string Request::extractString(const std::vector<uint8_t> &data, size_t start, size_t end)
-    {
-        return std::string(reinterpret_cast<const char *>(data.data() + start), end - start);
-    }
-
-    std::vector<std::string> Request::split(const std::string &text, const std::string &splitter)
-    {
-        std::vector<std::string> elements;
-
-        size_t pos = 0;
-        while (pos < text.size())
-        {
-            size_t end = text.find(splitter, pos);
-            if (end == std::string::npos)
-                end = text.size();
-
-            elements.push_back(trim(text.substr(pos, end - pos)));
-            pos = end + splitter.size();
-        }
-
-        return elements;
-    }
-
-    /*-------------------------------------------------------------------------------------------------
-     *
      * Request — header extraction
      *
      **/
@@ -234,23 +181,23 @@ namespace ESP32WebServer
             return request;
 
         // Split: "GET /path HTTP/1.1"
-        std::vector<std::string> firstLine = Request::split(headerRaw[0], " ");
+        std::vector<std::string> firstLine = split(headerRaw[0], " ");
         request.method = firstLine[0];
         request.path = firstLine[1];
 
         for (size_t i = 1; i < headerRaw.size(); i++)
         {
-            std::vector<std::string> line = Request::split(headerRaw[i], ":");
+            std::vector<std::string> line = split(headerRaw[i], ":");
             if (line.size() >= 2)
                 request.headers[line[0]] = line[1];
         }
 
         if (request.headers.find("Cookie") != request.headers.end())
         {
-            std::vector<std::string> cookieHeader = Request::split(request.headers["Cookie"], ";");
+            std::vector<std::string> cookieHeader = split(request.headers["Cookie"], ";");
             for (size_t i = 0; i < cookieHeader.size(); i++)
             {
-                std::vector<std::string> line = Request::split(cookieHeader[i], "=");
+                std::vector<std::string> line = split(cookieHeader[i], "=");
                 if (line.size() >= 2)
                     request.cookies[line[0]] = line[1];
             }
