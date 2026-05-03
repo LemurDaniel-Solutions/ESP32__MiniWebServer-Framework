@@ -544,6 +544,7 @@ It provides:
 
 - **WiFi** — scan for nearby networks, select one, enter the password and save. Credentials persist across reboots. Multiple networks can be stored; the device always picks the strongest signal.
 - **Security** — change the admin username and password.
+- **API Tokens** — create and manage permanent API tokens for programmatic access.
 - **Restart** — reboot the device directly from the browser.
 
 ![Admin Dashboard WiFi](.assets/admin.dashboard.wifi.png)
@@ -559,5 +560,18 @@ Server->defaultAdminSalt("optional-salt");
 // Disable the dashboard entirely
 // Server->disableAdmin();
 ```
+
+#### Permanent API Tokens
+
+Permanent tokens can be created from the **API Tokens** section of the admin dashboard. Unlike the session token (which expires after 1 hour), permanent tokens persist across reboots and never expire.
+
+Use them in API requests via the `Authorization` header:
+
+```http
+GET /admin/wifi/active HTTP/1.1
+Authorization: <your-token>
+```
+
+Tokens are stored in `/admin_perm_token.json` on LittleFS.
 
 </details>

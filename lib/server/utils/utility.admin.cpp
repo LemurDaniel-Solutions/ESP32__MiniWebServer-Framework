@@ -61,12 +61,7 @@ namespace ESP32WebServer
     std::vector<std::string> TokenManager::getCredentials()
     {
         std::vector<std::string> creds;
-        JsonDocument doc = JsonDocument();
-
-        if (fileExists(ADMIN_CREDENTIALS_FILE))
-        {
-            doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
-        }
+        const JsonDocument &doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
 
         if (doc["admin_salt"].is<std::string>())
         {
@@ -101,7 +96,7 @@ namespace ESP32WebServer
 
     bool TokenManager::checkCredentials(const std::string &username, const std::string &password)
     {
-        const std::vector<std::string> creds = getCredentials();
+        const std::vector<std::string> &creds = getCredentials();
 
         std::string admin_salt = creds[0];
         std::string admin_user = creds[1];
@@ -138,6 +133,12 @@ namespace ESP32WebServer
         return hashStr;
     }
 
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Handle tokens
+     *
+     **/
+
     void TokenManager::addToken(const std::string &token)
     {
         const unsigned long expiry = (millis() / 1000) + 3600;
@@ -152,7 +153,7 @@ namespace ESP32WebServer
 
     std::string TokenManager::getToken(const std::string &username)
     {
-        const std::string token = generateSHA256(randomString() + String(millis()).c_str(), username);
+        const std::string &token = generateSHA256(randomString() + String(millis()).c_str(), username);
         addToken(token);
         return token;
     }
@@ -173,6 +174,54 @@ namespace ESP32WebServer
         }
 
         return true;
+    }
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Handle Permanent tokens
+     *
+     **/
+
+    std::string TokenManager::addPermToken(const std::string &name)
+    {
+        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+
+        doc[name] = generateSHA256(randomString() + String(millis()).c_str(), name);
+
+        writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
+
+        return doc[name].as<std::string>();
+    }
+    void TokenManager::removePermToken(const std::string &name)
+    {
+        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+
+        doc.remove(name);
+
+        writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
+    }
+    bool TokenManager::checkPermToken(const std::string &authToken)
+    {
+        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+
+        for (JsonPair entry : doc.as<JsonObject>())
+        {
+            if (entry.value().as<std::string>() == authToken)
+                return true;
+        }
+
+        return false;
+    }
+    std::map<std::string, std::string> TokenManager::listPermTokens()
+    {
+        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+
+        std::map<std::string, std::string> result;
+        for (JsonPair entry : doc.as<JsonObject>())
+        {
+            result[entry.key().c_str()] = entry.value().as<std::string>();
+        }
+        return result;
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -628,6 +677,26 @@ namespace ESP32WebServer
         .modal .btn-row {
             justify-content: center;
         }
+
+        .add-token-form {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            display: none;
+        }
+
+        .token-value {
+            background: #f4f6f8;
+            border-radius: 6px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.82rem;
+            word-break: break-all;
+            text-align: left;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            user-select: all;
+        }
     </style>
 </head>
 
@@ -706,6 +775,41 @@ namespace ESP32WebServer
                     </div>
                     <button type="submit" class="btn"><i class="fa-solid fa-floppy-disk"></i> Update Auth</button>
                 </form>
+            </div>
+
+            <div class="card">
+                <h2><i class="fa-solid fa-key"></i> API Tokens</h2>
+                <div class="network-list" id="token-list">
+                    <div style="color:#bdc3c7; font-size:0.9rem;">Loading...</div>
+                </div>
+                <div class="add-token-form" id="add-token-form">
+                    <div class="form-group">
+                        <label class="label">Token Name</label>
+                        <input type="text" id="token-name" placeholder="z.B. Home Server">
+                    </div>
+                    <div class="btn-row">
+                        <button onclick="createToken()" class="btn btn-sm"><i class="fa-solid fa-plus"></i> Erstellen</button>
+                        <button onclick="toggleTokenForm(false)" class="btn btn-sm btn-secondary"><i class="fa-solid fa-xmark"></i> Abbrechen</button>
+                    </div>
+                </div>
+                <div style="margin-top:15px;">
+                    <button onclick="toggleTokenForm(true)" class="btn btn-sm" id="btn-add-token">
+                        <i class="fa-solid fa-plus"></i> Neuer Token
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-new-token">
+        <div class="modal">
+            <div class="modal-icon"><i class="fa-solid fa-key"></i></div>
+            <h3>Token erstellt</h3>
+            <p style="margin-bottom:10px;"><strong id="new-token-name"></strong></p>
+            <div class="token-value" id="new-token-value"></div>
+            <div class="btn-row">
+                <button onclick="copyNewToken()" class="btn btn-sm"><i class="fa-solid fa-copy"></i> Kopieren</button>
+                <button onclick="closeModal('modal-new-token')" class="btn btn-sm btn-secondary">Schliessen</button>
             </div>
         </div>
     </div>
@@ -865,9 +969,72 @@ namespace ESP32WebServer
 
         async function logOut() { await fetch('/admin/logout'); }
 
+        function toggleTokenForm(open) {
+            document.getElementById('add-token-form').style.display = open ? 'block' : 'none';
+            document.getElementById('btn-add-token').style.display = open ? 'none' : 'inline-flex';
+            if (open) document.getElementById('token-name').value = '';
+        }
+
+        async function loadPermTokens() {
+            try {
+                const res = await fetch('/admin/tokens');
+                const json = await res.json();
+                const list = document.getElementById('token-list');
+                const tokens = json.tokens || [];
+                if (tokens.length === 0) {
+                    list.innerHTML = '<div style="color:#bdc3c7; font-size:0.9rem;">Keine API Tokens.</div>';
+                } else {
+                    list.innerHTML = tokens.map(name => `
+                        <div class="network-item">
+                            <div class="net-info">
+                                <div class="net-ssid">${escapeHtml(name)}</div>
+                            </div>
+                            <button class="btn-icon" title="Token loeschen" data-name="${escapeHtml(name)}" onclick="deletePermToken(this.dataset.name)">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                document.getElementById('token-list').innerHTML = '<div style="color:#e74c3c; font-size:0.9rem;">Fehler beim Laden.</div>';
+            }
+        }
+
+        async function createToken() {
+            const name = document.getElementById('token-name').value.trim();
+            if (!name) return;
+            const res = await fetch('/admin/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (!res.ok) { alert('Fehler beim Erstellen des Tokens'); return; }
+            const json = await res.json();
+            toggleTokenForm(false);
+            loadPermTokens();
+            document.getElementById('new-token-name').textContent = json.name;
+            document.getElementById('new-token-value').textContent = json.token;
+            openModal('modal-new-token');
+        }
+
+        async function deletePermToken(name) {
+            if (!confirm(`Token "${name}" wirklich loeschen?`)) return;
+            await fetch('/admin/token', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            }).catch(() => {});
+            loadPermTokens();
+        }
+
+        function copyNewToken() {
+            navigator.clipboard.writeText(document.getElementById('new-token-value').textContent).catch(() => {});
+        }
+
         window.onload = () => {
             loadWiFiConfig();
             loadNetworks();
+            loadPermTokens();
             document.getElementById("form-creds").onsubmit = function () {
                 postAdminCredentials();
                 return false;
@@ -892,21 +1059,28 @@ namespace ESP32WebServer
     {
         Serial.println("Checking authentication for admin route");
 
-        const auto &entry = req.cookies.find(DEFAULT_ADMIN_COOKIE);
+        const auto &apiHeader = req.headers.find("Authorization");
+        if (apiHeader != req.headers.end())
+        {
+            if (TokenManager::instance().checkPermToken(apiHeader->second))
+                return true;
+        }
 
+        const auto &entry = req.cookies.find(DEFAULT_ADMIN_COOKIE);
         if (entry == req.cookies.end())
         {
             Serial.println("No admin token found in cookies");
             return false;
         }
 
-        if (!TokenManager::instance().checkToken(entry->second))
-        {
-            Serial.println("Invalid or expired admin token");
-            return false;
-        }
+        if (TokenManager::instance().checkToken(entry->second))
+            return true;
 
-        return true;
+        if (TokenManager::instance().checkPermToken(entry->second))
+            return true;
+
+        Serial.println("Invalid or expired admin token");
+        return false;
     }
 
     void verify_AdminAuth(Request &req, Response &res)
@@ -936,12 +1110,6 @@ namespace ESP32WebServer
 
         if (req.method == "GET")
             return;
-
-        if (req.body.json().isNull())
-        {
-            res.status(400).text("Invalid JSON").finalize();
-            return;
-        }
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -1013,6 +1181,63 @@ namespace ESP32WebServer
     {
         res.OK().text("Restarting...");
         xTaskCreate(restartTask, "restart", 4096, nullptr, 1, nullptr);
+    }
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Permanent Token Handlers
+     *
+     **/
+
+    void get_PermTokens(Request &req, Response &res)
+    {
+        const std::map<std::string, std::string> tokens = TokenManager::instance().listPermTokens();
+
+        JsonDocument doc;
+        JsonArray arr = doc["tokens"].to<JsonArray>();
+        for (const auto &entry : tokens)
+        {
+            arr.add(entry.first);
+        }
+
+        res.OK().json(doc);
+    }
+
+    void post_PermToken(Request &req, Response &res)
+    {
+        if (!req.body.json()["name"].is<std::string>())
+        {
+            res.status(400).text("Missing name");
+            return;
+        }
+
+        const std::string name = req.body.json()["name"].as<std::string>();
+        if (name.empty())
+        {
+            res.status(400).text("Name cannot be empty");
+            return;
+        }
+
+        const std::string token = TokenManager::instance().addPermToken(name);
+
+        JsonDocument doc;
+        doc["name"] = name;
+        doc["token"] = token;
+
+        res.OK().json(doc);
+    }
+
+    void delete_PermToken(Request &req, Response &res)
+    {
+        if (!req.body.json()["name"].is<std::string>())
+        {
+            res.status(400).text("Missing name");
+            return;
+        }
+
+        const std::string name = req.body.json()["name"].as<std::string>();
+        TokenManager::instance().removePermToken(name);
+        res.OK().text("Token deleted");
     }
 
     /*-------------------------------------------------------------------------------------------------

@@ -15,6 +15,7 @@
 #include <router/router.h>
 #include <utils/utility.wifi.h>
 
+#define ADMIN_PERMANENT_TOKENS "/admin_perm_token.json"
 #define ADMIN_CREDENTIALS_FILE "/admin_credentials.json"
 #define DEFAULT_ADMIN_COOKIE "adminToken"
 #define DEFAULT_ADMIN_USER "admin"
@@ -47,7 +48,7 @@ namespace ESP32WebServer
 
         /*-------------------------------------------------------------------------------------------------
          *
-         * Handle tokens
+         * Handle session tokens
          *
          **/
 
@@ -55,6 +56,17 @@ namespace ESP32WebServer
         void removeToken(const std::string &token);
         std::string getToken(const std::string &username);
         bool checkToken(const std::string &authToken);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Handle permanent tokens
+         *
+         **/
+
+        std::string addPermToken(const std::string &name);
+        void removePermToken(const std::string &name);
+        bool checkPermToken(const std::string &authToken);
+        std::map<std::string, std::string> listPermTokens();
 
     private:
         TokenManager() {}
@@ -88,6 +100,16 @@ namespace ESP32WebServer
     void post_AdminLogin(Request &req, Response &res);
     void post_AdminUpdateAuth(Request &req, Response &res);
     void post_AdminRestart(Request &req, Response &res);
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Handle Permanent API Tokens
+     *
+     **/
+
+    void get_PermTokens(Request &req, Response &res);
+    void post_PermToken(Request &req, Response &res);
+    void delete_PermToken(Request &req, Response &res);
 
     /*-------------------------------------------------------------------------------------------------
      *
@@ -133,6 +155,11 @@ namespace ESP32WebServer
             // Add or Remove a WiFi-Config
             route("POST", "/admin/wifi/network", post_WiFiSavedNetwork);
             route("DELETE", "/admin/wifi/network", delete_WiFiSavedNetwork);
+
+            // Permanent API Tokens
+            route("GET", "/admin/tokens", get_PermTokens);
+            route("POST", "/admin/token", post_PermToken);
+            route("DELETE", "/admin/token", delete_PermToken);
         }
     };
 }

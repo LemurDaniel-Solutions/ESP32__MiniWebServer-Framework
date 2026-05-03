@@ -25,6 +25,8 @@ namespace ESP32WebServer
     public:
         UpdateRouter()
         {
+            use("/upload", auth_handler);
+
             route("POST", "/upload/code", post_UpdateCode);
             route("POST", "/upload/website", post_UpdateWebsite);
         }
