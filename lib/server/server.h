@@ -73,6 +73,8 @@ namespace ESP32WebServer
         // Add default middleware handler
         void use(const RequestHandler &handler);
         void use(const std::string &prefix, const RequestHandler &handler);
+        
+        RequestHandler cors(const std::string &origin = "*");
 
     private:
         struct sockaddr_in _address;
@@ -93,9 +95,6 @@ namespace ESP32WebServer
 
         void processHandlers(Request &req, Response &res);
         void handleClient(int client_socket);
-
-        // Map of path to file path for static file serving
-        void serveFile(int client_socket, Response &res);
 
         // Map of "METHOD PATH" to handler function for dynamic routes
         std::map<std::string, std::vector<RequestHandler>> _routes;

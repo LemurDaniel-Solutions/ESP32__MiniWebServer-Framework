@@ -498,6 +498,18 @@ Request → use() handlers (in registration order, prefix-matched)
 | Auth (per-route) | `route()` chain | Fine-grained control per endpoint |
 | Rate limiting | `use("/")` | Track request counts, abort with `429` |
 
+#### CORS
+
+The server ships a built-in CORS handler. Register it once to add the appropriate headers to every response:
+
+```cpp
+// Allow all origins (default)
+Server->use(Server->cors());
+
+// Restrict to a specific origin
+Server->use(Server->cors("https://my-frontend.example.com"));
+```
+
 ➡️ See also: **📤 Response Handling** above for all available response methods.
 
 </details>

@@ -24,6 +24,9 @@ void setup()
   // Disables admin routes entirly
   // Server->disableAdmin();
 
+  // Take care of CORS
+  // Server->use(Server->cors());
+
   Server->root("/web");
   Server->index("/web/index.html");
 

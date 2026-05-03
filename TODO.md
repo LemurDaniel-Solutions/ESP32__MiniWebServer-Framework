@@ -16,7 +16,7 @@
 - [ ] **Route parameters** — support `/user/:id` style dynamic segments
 - [✅] **DELETE and PATCH direct methods** — only GET, POST, PUT wired up currently
 - [✅] **Chunked / streaming response** — large payloads currently buffered entirely in RAM
-- [ ] **CORS middleware** — built-in helper for cross-origin headers
+- [✅] **CORS middleware** — built-in helper for cross-origin headers
 
 ## Security
 

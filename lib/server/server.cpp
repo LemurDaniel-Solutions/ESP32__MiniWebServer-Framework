@@ -94,7 +94,7 @@ namespace ESP32WebServer
             for (const RequestHandler &handler : entry.second)
             {
                 handler(request, response);
-                if (response.finalized)
+                if (response.isFinalized())
                 {
                     return Response::send(client_socket, response);
                 }
@@ -121,7 +121,7 @@ namespace ESP32WebServer
         for (const RequestHandler &handler : route)
         {
             handler(request, response);
-            if (response.finalized)
+            if (response.isFinalized())
                 break;
         }
 
@@ -151,6 +151,13 @@ namespace ESP32WebServer
     void MiniServer::use(const RequestHandler &handler)
     {
         use("/", handler);
+    }
+
+    RequestHandler MiniServer::cors(const std::string &origin) {
+        const RequestHandler &cors = [origin](Request &req, Response &res){
+            res.header("Access-Control-Allow-Origin", origin);
+        };
+        return cors;
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -222,37 +229,6 @@ namespace ESP32WebServer
      * Serve and handle files:
      *
      **/
-
-    void MiniServer::serveFile(int client_socket, Response &res)
-    {
-
-        File file = LittleFS.open(res.filePath.c_str(), "r");
-
-        const std::string header = res.getHeaders();
-        write(client_socket, header.c_str(), header.size());
-
-        char chunk[1460]; // TCP MTU-friendly chunk size
-        size_t totalSent = 0;
-
-        file.seek(0); // Ensure we start from the beginning
-        while (file.available() && totalSent < res.fileSize)
-        {
-            size_t n = file.readBytes(chunk, sizeof(chunk));
-            if (n > 0)
-            {
-                write(client_socket, chunk, n);
-                totalSent += n;
-            }
-            else
-            {
-                Serial.println("⚠️  WARNING: Read error while serving file!");
-                break;
-            }
-        }
-
-        file.close();
-        Serial.printf("✅ File transfer completed: %zu bytes sent\n", totalSent);
-    }
 
     void MiniServer::staticFile(const std::string &path, const std::string &file_path)
     {

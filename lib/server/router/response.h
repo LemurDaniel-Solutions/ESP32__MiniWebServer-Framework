@@ -14,15 +14,9 @@ namespace ESP32WebServer
 {
     class Response
     {
-    public:
-        static void send(int socket, Response &res);
-
+    private:
         // Flag to indicate if the response has been finalized by some middleware or handler, preventing further modifications
         int finalized = false;
-
-        Response &finalize();
-
-        std::string responseMode = "body"; // "body" or "file"
 
         // HTTP status code for the response (e.g., 200 for OK, 404 for Not Found)
         int status_code = 200;
@@ -30,13 +24,30 @@ namespace ESP32WebServer
         // Custom headers to include in the response
         std::map<std::string, std::string> headers;
 
-        // Default content type is text/plain, but can be set to application/json or others as needed
-        std::string body;
-
         // For static file responses, this will be set to the file path to serve
         size_t fileSize;
         std::string filePath;
 
+        std::string responseMode = "body"; // "body" or "file"
+        // Default content type is text/plain, but can be set to application/json or others as needed
+        std::string body;
+
+    private:
+        void send(int socket);
+
+    public:
+        static void send(int socket, Response &res);
+
+        Response &finalize();
+        int isFinalized()
+        {
+            return finalized;
+        }
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Headers
+         **/
         Response &header(const std::string &key, const std::string &value);
         std::string getHeaders();
 
@@ -58,8 +69,5 @@ namespace ESP32WebServer
         Response &text(const std::string &text);
         Response &json(const JsonDocument &bodyJson);
         Response &html(const std::string &htmlBody);
-
-    private:
-        void send(int socket);
     };
 }
