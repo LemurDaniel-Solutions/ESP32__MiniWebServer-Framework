@@ -2,218 +2,172 @@
 // Copyright © 2026, Daniel Landau
 // MIT License
 
-#pragma once
-
-#include <Arduino.h>
-#include <stdlib.h>
-#include "mbedtls/sha256.h"
-
-#include <vector>
-#include <string>
-
-#include <router.h>
-#include <utility.wifi.h>
-
-#define ADMIN_CREDENTIALS_FILE "/admin_credentials.json"
+#include <utils/utility.admin.h>
 
 namespace ESP32WebServer
 {
-    static inline void restartTask(void *param)
+
+    static void restartTask(void *param)
     {
         vTaskDelay(pdMS_TO_TICKS(500));
         ESP.restart();
         vTaskDelete(nullptr);
     }
 
-    class TokenManager
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * TokenManager
+     *
+     **/
+
+    bool TokenManager::setCredentials(std::string username, std::string password)
     {
-    public:
-        std::string DEFAULT_ADMIN_COOKIE = "adminToken";
+        JsonDocument doc = JsonDocument();
 
-        std::string DEFAULT_ADMIN_USER = "admin";
-        std::string DEFAULT_ADMIN_PWD = "admin";
-
-        std::string DEFAULT_ADMIN_SALT = "5B63F3F0104D1649B8E1A9C9E5F2A1"; // Random salt for password hashing
-
-        static TokenManager &instance()
+        if (fileExists(ADMIN_CREDENTIALS_FILE))
         {
-            static TokenManager _instance;
-            return _instance;
+            doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
         }
 
-        bool setCredentials(std::string username, std::string password)
+        std::string salt = DEFAULT_ADMIN_SALT;
+        if (doc["admin_salt"].is<std::string>())
         {
-
-            JsonDocument doc = JsonDocument();
-
-            if (fileExists(ADMIN_CREDENTIALS_FILE))
-            {
-                std::vector<std::string> creds;
-                doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
-            }
-
-            std::string salt = DEFAULT_ADMIN_SALT;
-            if (doc["admin_salt"].is<std::string>())
-            {
-                salt = doc["admin_salt"].as<std::string>();
-            }
-
-            const std::string password_hash = generateSHA256(password, salt);
-
-            doc["admin_user"] = username;
-            doc["admin_pwd"] = password_hash;
-            writeJsonFile(ADMIN_CREDENTIALS_FILE, doc);
-
-            return true;
+            salt = doc["admin_salt"].as<std::string>();
         }
 
-        std::vector<std::string> getCredentials()
+        const std::string password_hash = generateSHA256(password, salt);
+
+        doc["admin_user"] = username;
+        doc["admin_pwd"] = password_hash;
+        writeJsonFile(ADMIN_CREDENTIALS_FILE, doc);
+
+        return true;
+    }
+
+    std::vector<std::string> TokenManager::getCredentials()
+    {
+        std::vector<std::string> creds;
+        JsonDocument doc = JsonDocument();
+
+        if (fileExists(ADMIN_CREDENTIALS_FILE))
         {
-
-            std::vector<std::string> creds;
-            JsonDocument doc = JsonDocument();
-
-            if (fileExists(ADMIN_CREDENTIALS_FILE))
-            {
-                std::vector<std::string> creds;
-                doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
-            }
-
-            if (doc["admin_salt"].is<std::string>())
-            {
-                creds.push_back(doc["admin_salt"].as<std::string>());
-            }
-            else
-            {
-                creds.push_back(DEFAULT_ADMIN_SALT);
-            }
-
-            if (doc["admin_user"].is<std::string>())
-            {
-                creds.push_back(doc["admin_user"].as<std::string>());
-            }
-            else
-            {
-                creds.push_back(DEFAULT_ADMIN_USER);
-            }
-
-            if (doc["admin_pwd"].is<std::string>())
-            {
-                creds.push_back(doc["admin_pwd"].as<std::string>());
-            }
-            else
-            {
-                std::string admin_hash = generateSHA256(DEFAULT_ADMIN_PWD, creds[0]);
-                creds.push_back(admin_hash);
-            }
-
-            return creds;
+            doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
         }
 
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Handle credentials
-         *
-         **/
-
-        bool checkCredentials(const std::string &username, const std::string &password)
+        if (doc["admin_salt"].is<std::string>())
         {
-            const std::vector<std::string> creds = getCredentials();
-
-            std::string admin_salt = creds[0];
-            std::string admin_user = creds[1];
-            std::string admin_pwd = creds[2];
-
-            const std::string hash = generateSHA256(password, admin_salt);
-
-            return username == admin_user && hash == admin_pwd;
+            creds.push_back(doc["admin_salt"].as<std::string>());
+        }
+        else
+        {
+            creds.push_back(DEFAULT_ADMIN_SALT);
         }
 
-        std::string generateSHA256(const std::string &text, const std::string salt)
+        if (doc["admin_user"].is<std::string>())
         {
-            mbedtls_sha256_context ctx;
-            mbedtls_sha256_init(&ctx);
-            mbedtls_sha256_starts(&ctx, 0); // 0 = SHA-256
-
-            // Combine password and salt
-            mbedtls_sha256_update(&ctx, (unsigned char *)text.c_str(), text.length());
-            mbedtls_sha256_update(&ctx, (unsigned char *)salt.c_str(), 16); // Assuming 16-byte salt
-
-            unsigned char shaResult[32];
-
-            mbedtls_sha256_finish(&ctx, shaResult);
-            mbedtls_sha256_free(&ctx);
-
-            std::string hashStr;
-
-            for (int i = 0; i < 32; i++)
-            {
-                char buf[3];
-                snprintf(buf, sizeof(buf), "%02x", shaResult[i]);
-                hashStr += buf;
-            }
-
-            return hashStr;
+            creds.push_back(doc["admin_user"].as<std::string>());
+        }
+        else
+        {
+            creds.push_back(DEFAULT_ADMIN_USER);
         }
 
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Handle tokens
-         *
-         **/
-
-        void addToken(const std::string &token)
+        if (doc["admin_pwd"].is<std::string>())
         {
-            const unsigned long expiry = (millis() / 1000) + 3600;
-            ADMIN_TOKENS.insert({token, expiry});
+            creds.push_back(doc["admin_pwd"].as<std::string>());
+        }
+        else
+        {
+            std::string admin_hash = generateSHA256(DEFAULT_ADMIN_PWD, creds[0]);
+            creds.push_back(admin_hash);
         }
 
-        void removeToken(const std::string &token)
+        return creds;
+    }
+
+    bool TokenManager::checkCredentials(const std::string &username, const std::string &password)
+    {
+        const std::vector<std::string> creds = getCredentials();
+
+        std::string admin_salt = creds[0];
+        std::string admin_user = creds[1];
+        std::string admin_pwd = creds[2];
+
+        const std::string hash = generateSHA256(password, admin_salt);
+
+        return username == admin_user && hash == admin_pwd;
+    }
+
+    std::string TokenManager::generateSHA256(const std::string &text, const std::string salt)
+    {
+        mbedtls_sha256_context ctx;
+        mbedtls_sha256_init(&ctx);
+        mbedtls_sha256_starts(&ctx, 0);
+
+        mbedtls_sha256_update(&ctx, (unsigned char *)text.c_str(), text.length());
+        mbedtls_sha256_update(&ctx, (unsigned char *)salt.c_str(), 16);
+
+        unsigned char shaResult[32];
+
+        mbedtls_sha256_finish(&ctx, shaResult);
+        mbedtls_sha256_free(&ctx);
+
+        std::string hashStr;
+
+        for (int i = 0; i < 32; i++)
         {
-            const auto &entry = ADMIN_TOKENS.find(token);
+            char buf[3];
+            snprintf(buf, sizeof(buf), "%02x", shaResult[i]);
+            hashStr += buf;
+        }
+
+        return hashStr;
+    }
+
+    void TokenManager::addToken(const std::string &token)
+    {
+        const unsigned long expiry = (millis() / 1000) + 3600;
+        ADMIN_TOKENS.insert({token, expiry});
+    }
+
+    void TokenManager::removeToken(const std::string &token)
+    {
+        const auto &entry = ADMIN_TOKENS.find(token);
+        ADMIN_TOKENS.erase(entry);
+    }
+
+    std::string TokenManager::getToken(const std::string &username)
+    {
+        const std::string token = generateSHA256(randomString() + String(millis()).c_str(), username);
+        addToken(token);
+        return token;
+    }
+
+    bool TokenManager::checkToken(const std::string &authToken)
+    {
+        unsigned long currentTime = millis() / 1000;
+
+        const auto &entry = ADMIN_TOKENS.find(authToken);
+        if (entry == ADMIN_TOKENS.end())
+        {
+            return false;
+        }
+
+        if (currentTime > entry->second)
+        {
             ADMIN_TOKENS.erase(entry);
         }
 
-        std::string getToken(const std::string &username)
-        {
-            const std::string token = generateSHA256(randomString() + String(millis()).c_str(), username);
-            const unsigned long tokenExpiresAt = millis() + 3600000; // Token valid for 1 hour
+        return true;
+    }
 
-            addToken(token);
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Admin Pages
+     *
+     **/
 
-            return token;
-        }
-
-        bool checkToken(const std::string &authToken)
-        {
-            unsigned long currentTime = millis() / 1000;
-
-            const auto &entry = ADMIN_TOKENS.find(authToken);
-            if (entry == ADMIN_TOKENS.end())
-            {
-                return false;
-            }
-
-            if (currentTime > entry->second)
-            {
-                // Delete expired token
-                ADMIN_TOKENS.erase(entry);
-            }
-
-            return true;
-        }
-
-    private:
-        TokenManager() {} // Privater Konstruktor
-
-        // Verhindere Kopien des Singletons (Wichtig!)
-        TokenManager(const TokenManager &) = delete;
-        void operator=(const TokenManager &) = delete;
-
-        std::map<std::string, unsigned long> ADMIN_TOKENS;
-    };
-
-    inline void get_AdminLogin(Request &req, Response &res)
+    void get_AdminLogin(Request &req, Response &res)
     {
         std::string adminPage = R"html(
 <!DOCTYPE html>
@@ -303,7 +257,6 @@ namespace ESP32WebServer
     </div>
 
     <script>
-        // Override form submission to send JSON data
         window.onload = function () {
             document.getElementById("form-login").onsubmit = function () {
                 postLogin();
@@ -342,7 +295,7 @@ namespace ESP32WebServer
                 const json = await res.json();
                 const token = json.token;
 
-                document.cookie = `adminToken=${token}; path=/; max-age=3600`; // Cookie valid for 1 hour
+                document.cookie = `adminToken=${token}; path=/; max-age=3600`;
 
                 window.location.replace('/admin/dashboard')
             }
@@ -361,7 +314,7 @@ namespace ESP32WebServer
         res.html(adminPage);
     }
 
-    inline void get_AdminDashboard(Request &req, Response &res)
+    void get_AdminDashboard(Request &req, Response &res)
     {
         std::string dashboardPage = R"html(
 <!DOCTYPE html>
@@ -530,13 +483,6 @@ namespace ESP32WebServer
             background: #fff;
         }
 
-        #wifi-form {
-            margin-top: 20px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-            display: none;
-        }
-
         .network-list {
             margin-top: 15px;
             display: flex;
@@ -567,21 +513,6 @@ namespace ESP32WebServer
             text-overflow: ellipsis;
         }
 
-        .network-item .net-meta {
-            font-size: 0.78rem;
-            color: #95a5a6;
-            display: flex;
-            gap: 12px;
-            margin-top: 2px;
-            align-items: center;
-        }
-
-        .network-item .net-pwd {
-            font-family: monospace;
-            letter-spacing: 2px;
-            font-size: 0.85rem;
-        }
-
         .network-item .btn-icon {
             background: none;
             border: none;
@@ -596,10 +527,6 @@ namespace ESP32WebServer
 
         .network-item .btn-icon:hover {
             color: var(--danger);
-        }
-
-        .network-item .btn-icon.toggle-pwd:hover {
-            color: var(--primary);
         }
 
         .add-network-form {
@@ -662,15 +589,8 @@ namespace ESP32WebServer
         }
 
         @keyframes pop-in {
-            from {
-                transform: scale(0.85);
-                opacity: 0;
-            }
-
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
+            from { transform: scale(0.85); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
         }
 
         .modal-icon {
@@ -704,8 +624,7 @@ namespace ESP32WebServer
                 <h1>Admin Dashboard</h1>
             </div>
             <div style="display:flex; gap:10px;">
-                <button onclick="confirmRestart()" class="btn btn-success"><i class="fa-solid fa-power-off"></i> Restart
-                    Device</button>
+                <button onclick="confirmRestart()" class="btn btn-success"><i class="fa-solid fa-power-off"></i> Restart Device</button>
                 <a href="/admin" onClick="logOut()" class="btn btn-danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
             </div>
         </header>
@@ -748,12 +667,9 @@ namespace ESP32WebServer
                         <input type="password" id="wifi-password" placeholder="WiFi Password">
                     </div>
                     <div class="btn-row">
-                        <button onclick="addNetwork()" class="btn btn-sm"><i class="fa-solid fa-floppy-disk"></i>
-                            Save</button>
-                        <button onclick="scanWiFi()" class="btn btn-sm btn-secondary"><i class="fa-solid fa-rotate"></i>
-                            Rescan</button>
-                        <button onclick="toggleAddForm(false)" class="btn btn-sm btn-secondary"><i
-                                class="fa-solid fa-xmark"></i> Cancel</button>
+                        <button onclick="addNetwork()" class="btn btn-sm"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+                        <button onclick="scanWiFi()" class="btn btn-sm btn-secondary"><i class="fa-solid fa-rotate"></i> Rescan</button>
+                        <button onclick="toggleAddForm(false)" class="btn btn-sm btn-secondary"><i class="fa-solid fa-xmark"></i> Cancel</button>
                     </div>
                 </div>
                 <div style="margin-top:15px;">
@@ -765,7 +681,7 @@ namespace ESP32WebServer
 
             <div class="card">
                 <h2><i class="fa-solid fa-user-shield"></i> Security</h2>
-                <form id="form-creds" >
+                <form id="form-creds">
                     <div class="form-group">
                         <label class="label">Admin Username</label>
                         <input type="text" name="admin_user" placeholder="Username" required>
@@ -780,7 +696,6 @@ namespace ESP32WebServer
         </div>
     </div>
 
-    <!-- Network saved popup -->
     <div class="modal-overlay" id="modal-wifi-saved">
         <div class="modal">
             <div class="modal-icon"><i class="fa-solid fa-circle-check"></i></div>
@@ -788,13 +703,11 @@ namespace ESP32WebServer
             <p>The network was added. Changes take effect after a restart.</p>
             <div class="btn-row">
                 <button onclick="closeModal('modal-wifi-saved')" class="btn btn-secondary btn-sm">Later</button>
-                <button onclick="doRestart()" class="btn btn-sm"><i class="fa-solid fa-power-off"></i> Restart
-                    Now</button>
+                <button onclick="doRestart()" class="btn btn-sm"><i class="fa-solid fa-power-off"></i> Restart Now</button>
             </div>
         </div>
     </div>
 
-    <!-- Restart confirm popup -->
     <div class="modal-overlay" id="modal-restart">
         <div class="modal">
             <div class="modal-icon" style="color:var(--danger)"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -802,36 +715,26 @@ namespace ESP32WebServer
             <p>The ESP32 will be restarted. The connection will be interrupted.</p>
             <div class="btn-row">
                 <button onclick="closeModal('modal-restart')" class="btn btn-secondary btn-sm">Cancel</button>
-                <button onclick="doRestart()" class="btn btn-danger btn-sm"><i class="fa-solid fa-power-off"></i>
-                    Restart</button>
+                <button onclick="doRestart()" class="btn btn-danger btn-sm"><i class="fa-solid fa-power-off"></i> Restart</button>
             </div>
         </div>
     </div>
 
-    <!-- Admin Saved Confirm -->
     <div class="modal-overlay" id="modal-admin-saved">
         <div class="modal">
             <div class="modal-icon" style="color:var(--danger)"><i class="fa-solid fa-triangle-exclamation"></i></div>
             <h3>Admin Credentials were update!</h3>
             <p>The old Credentials are no longer valid.</p>
             <div class="btn-row">
-                <button  onclick="closeModal('modal-admin-saved')" class="btn btn-danger btn-sm">Confirm</button>
+                <button onclick="closeModal('modal-admin-saved')" class="btn btn-danger btn-sm">Confirm</button>
             </div>
         </div>
     </div>
 
     <script>
-        function openModal(id) {
-            document.getElementById(id).classList.add('visible');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('visible');
-        }
-
-        function confirmRestart() {
-            openModal('modal-restart');
-        }
+        function openModal(id) { document.getElementById(id).classList.add('visible'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+        function confirmRestart() { openModal('modal-restart'); }
 
         function escapeHtml(str) {
             return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -848,7 +751,7 @@ namespace ESP32WebServer
         async function doRestart() {
             closeModal('modal-wifi-saved');
             closeModal('modal-restart');
-            await fetch('/admin/restart', { method: 'POST' }).catch(() => { });
+            await fetch('/admin/restart', { method: 'POST' }).catch(() => {});
         }
 
         async function loadWiFiConfig() {
@@ -859,16 +762,13 @@ namespace ESP32WebServer
                 document.getElementById('password-value').innerText = json.Password || "Not Set";
                 document.getElementById('ip-value').innerText = json.IPAddress || "";
                 document.getElementById('rssi-value').innerText = json.SignalStrength || "0 dBm";
-            } catch (e) {
-                console.error("Fetch error", e);
-            }
+            } catch (e) { console.error("Fetch error", e); }
         }
 
         var scanWiFiRunning = false;
         async function scanWiFi() {
             if (scanWiFiRunning) return;
             scanWiFiRunning = true;
-
             const select = document.getElementById('wifi-ssid');
             select.innerHTML = '<option value="">-- Scanning... --</option>';
             try {
@@ -880,22 +780,18 @@ namespace ESP32WebServer
             } catch (e) {
                 console.error("Scan error", e);
                 select.innerHTML = '<option value="">-- Scan failed --</option>';
-            } finally {
-                scanWiFiRunning = false;
-            }
+            } finally { scanWiFiRunning = false; }
         }
 
         async function addNetwork() {
             const ssid = document.getElementById('wifi-ssid').value;
             const password = document.getElementById('wifi-password').value;
             if (!ssid) return;
-
             await fetch('/admin/wifi/network', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ssid, password })
             });
-
             document.getElementById('wifi-password').value = '';
             toggleAddForm(false);
             loadNetworks();
@@ -908,7 +804,7 @@ namespace ESP32WebServer
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ssid })
-            }).catch(() => { });
+            }).catch(() => {});
             loadNetworks();
         }
 
@@ -923,8 +819,7 @@ namespace ESP32WebServer
                     <div class="net-info">
                         <div class="net-ssid">${escapeHtml(net.SSID)}</div>
                     </div>
-                    <button class="btn-icon" title="Remove network"
-                        onclick="removeNetwork('${net.SSID}')">
+                    <button class="btn-icon" title="Remove network" onclick="removeNetwork('${net.SSID}')">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -945,33 +840,20 @@ namespace ESP32WebServer
 
         async function postAdminCredentials() {
             const form = document.getElementById('form-creds');
-
             const res = await fetch('/admin/auth', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    admin_user: form.admin_user.value,
-                    admin_pwd: form.admin_pwd.value
-                })
+                body: JSON.stringify({ admin_user: form.admin_user.value, admin_pwd: form.admin_pwd.value })
             });
-
-            if(!res.ok) {
-                alert(res.statusText);
-                return;
-            } 
-
+            if (!res.ok) { alert(res.statusText); return; }
             openModal('modal-admin-saved');
         }
 
-        async function logOut() {
-            await fetch('/admin/logout');
-        }
+        async function logOut() { await fetch('/admin/logout'); }
 
-        window.onload = () => { 
-            loadWiFiConfig(); 
-            loadNetworks(); 
-        
-            // Override form submission to send JSON data
+        window.onload = () => {
+            loadWiFiConfig();
+            loadNetworks();
             document.getElementById("form-creds").onsubmit = function () {
                 postAdminCredentials();
                 return false;
@@ -988,11 +870,11 @@ namespace ESP32WebServer
 
     /*-------------------------------------------------------------------------------------------------
      *
-     * Helper Handlers authentication
+     * Authentication helpers
      *
      **/
 
-    inline bool isTokenValid(Request &req, Response &res)
+    bool isTokenValid(Request &req, Response &res)
     {
         Serial.println("Checking authentication for admin route");
 
@@ -1013,7 +895,7 @@ namespace ESP32WebServer
         return true;
     }
 
-    inline void verify_AdminAuth(Request &req, Response &res)
+    void verify_AdminAuth(Request &req, Response &res)
     {
         if (!isTokenValid(req, res))
         {
@@ -1025,13 +907,9 @@ namespace ESP32WebServer
         }
     }
 
-    inline void auth_handler(Request &req, Response &res)
+    void auth_handler(Request &req, Response &res)
     {
-
-        // This is not the most elegant way but works
-        if (
-            req.path == "/admin" ||
-            req.path == "/admin/login")
+        if (req.path == "/admin" || req.path == "/admin/login")
         {
             return;
         }
@@ -1054,11 +932,11 @@ namespace ESP32WebServer
 
     /*-------------------------------------------------------------------------------------------------
      *
-     * Request Handlers Authentication
+     * Request Handlers
      *
      **/
 
-    inline void get_AdminLogout(Request &req, Response &res)
+    void get_AdminLogout(Request &req, Response &res)
     {
         const auto &entry = req.cookies.find(TokenManager::instance().DEFAULT_ADMIN_COOKIE);
 
@@ -1070,9 +948,8 @@ namespace ESP32WebServer
         res.OK();
     }
 
-    inline void post_AdminLogin(Request &req, Response &res)
+    void post_AdminLogin(Request &req, Response &res)
     {
-
         const JsonDocument &body = req.body.json();
 
         if (!body["username"].is<std::string>() && !body["password"].is<std::string>())
@@ -1097,15 +974,8 @@ namespace ESP32WebServer
         res.json(doc);
     }
 
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Handle Admin Credentials
-     *
-     **/
-
-    inline void post_AdminUpdateAuth(Request &req, Response &res)
+    void post_AdminUpdateAuth(Request &req, Response &res)
     {
-
         if (!req.body.json()["admin_user"].is<std::string>() || !req.body.json()["admin_pwd"].is<std::string>())
         {
             res.status(400).text("Missing admin_user or admin_pwd");
@@ -1125,7 +995,7 @@ namespace ESP32WebServer
         }
     }
 
-    inline void post_AdminRestart(Request &req, Response &res)
+    void post_AdminRestart(Request &req, Response &res)
     {
         res.OK().text("Restarting...");
         xTaskCreate(restartTask, "restart", 4096, nullptr, 1, nullptr);
@@ -1133,10 +1003,11 @@ namespace ESP32WebServer
 
     /*-------------------------------------------------------------------------------------------------
      *
-     * Handle WiFi Configuration
+     * WiFi Configuration Handlers
      *
      **/
-    inline void get_WiFiActive(Request &req, Response &res)
+
+    void get_WiFiActive(Request &req, Response &res)
     {
         Serial.println("Fetching current WiFi configuration for admin dashboard");
         ESP32WebServer::WiFiConfig wifiConfig = WiFiUtility::instance().getActiveWiFi();
@@ -1150,7 +1021,7 @@ namespace ESP32WebServer
         res.OK().json(doc);
     }
 
-    inline void get_WiFiScan(Request &req, Response &res)
+    void get_WiFiScan(Request &req, Response &res)
     {
         std::vector<ESP32WebServer::WiFiConfig> options = WiFiUtility::instance().scanNetworks();
 
@@ -1167,7 +1038,7 @@ namespace ESP32WebServer
         res.OK().json(doc);
     }
 
-    inline void get_WiFiSavedNetworks(Request &req, Response &res)
+    void get_WiFiSavedNetworks(Request &req, Response &res)
     {
         std::vector<ESP32WebServer::WiFiConfig> options = WiFiUtility::instance().getSavedNetworks();
 
@@ -1184,9 +1055,8 @@ namespace ESP32WebServer
         res.OK().json(doc);
     }
 
-    inline void delete_WiFiSavedNetwork(Request &req, Response &res)
+    void delete_WiFiSavedNetwork(Request &req, Response &res)
     {
-
         if (req.body.json().isNull() || !req.body.json()["ssid"].is<std::string>())
         {
             res.status(400).text("Missing ssid");
@@ -1198,9 +1068,8 @@ namespace ESP32WebServer
         res.OK().text("Network removed");
     }
 
-    inline void post_WiFiSavedNetwork(Request &req, Response &res)
+    void post_WiFiSavedNetwork(Request &req, Response &res)
     {
-
         if (!req.body.json()["ssid"].is<std::string>() || !req.body.json()["password"].is<std::string>())
         {
             res.status(400).text("Missing ssid or password");
@@ -1215,38 +1084,4 @@ namespace ESP32WebServer
         res.OK().text("WiFi config updated");
     }
 
-    class AdminRouter : public ESP32WebServer::Router
-    {
-    public:
-        AdminRouter()
-        {
-            use("/admin", auth_handler);
-
-            // Unprotected Routes
-            route("GET", "/admin", get_AdminLogin);
-            route("GET", "/admin/logout", get_AdminLogout);
-            route("GET", "/admin/login", verify_AdminAuth);
-            route("POST", "/admin/login", post_AdminLogin);
-
-            // Returns the html sites
-            route("GET", "/admin/dashboard", get_AdminDashboard);
-
-            // Return 401 if the token is not valid or missing for any /admin/* route
-            route("POST", "/admin/auth", post_AdminUpdateAuth);
-
-            // Wifi config routes for admin dashboard
-            route("POST", "/admin/restart", post_AdminRestart);
-
-            // Get al WiFi Networks in reach of the device
-            route("GET", "/admin/wifi/scan", get_WiFiScan);
-            route("GET", "/admin/wifi/active", get_WiFiActive);
-
-            // Get all WiFi networks to possibly connect to
-            route("GET", "/admin/wifi/networks", get_WiFiSavedNetworks);
-
-            // Add or Remove a WiFi-Config
-            route("POST", "/admin/wifi/network", post_WiFiSavedNetwork);
-            route("DELETE", "/admin/wifi/network", delete_WiFiSavedNetwork);
-        }
-    };
 }

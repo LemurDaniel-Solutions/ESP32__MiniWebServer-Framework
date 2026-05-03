@@ -2,34 +2,18 @@
 // Copyright © 2026, Daniel Landau
 // MIT License
 
-#pragma once
-
-#include <Arduino.h>
-#include <stdlib.h>
-#include <Update.h>
-
-#include <vector>
-#include <string>
-
-#include <router.h>
-#include <utility.wifi.h>
-#include <utility.admin.h>
+#include <utils/utility.update.h>
 
 namespace ESP32WebServer
 {
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Update website via remote zip package
-     *
-     **/
 
-    inline void post_UpdateWebsite(Request &req, Response &res)
+    void post_UpdateWebsite(Request &req, Response &res)
     {
         Serial.print("File located at: ");
         Serial.println(req.body.file().c_str());
     }
 
-    inline void post_UpdaterCode(Request &req, Response &res)
+    void post_UpdateCode(Request &req, Response &res)
     {
         size_t updateSize = req.body.contentLength;
 
@@ -56,14 +40,4 @@ namespace ESP32WebServer
         }
     }
 
-    class UpdateRouter : public ESP32WebServer::Router
-    {
-    public:
-        UpdateRouter()
-        {
-            // use("/web", auth_handler);
-
-            route("POST", "/code", post_UpdaterCode);
-        }
-    };
 }

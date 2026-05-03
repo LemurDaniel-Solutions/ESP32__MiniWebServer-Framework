@@ -2,33 +2,17 @@
 // Copyright © 2026, Daniel Landau
 // MIT License
 
-#pragma once
-
-#include <Arduino.h>
-#include <LittleFS.h>
-
-#include <ArduinoJson.h>
-#include <ESP32-targz.h>
+#include <utils/utility.file.h>
 
 namespace ESP32WebServer
 {
 
-    const std::string TEMP_FOLDER = "/tmp";
-
-    inline bool fileExists(const std::string &filePath)
+    bool fileExists(const std::string &filePath)
     {
         return LittleFS.exists(filePath.c_str());
     }
 
-    struct FileInfo
-    {
-        std::string name;
-        std::string path;
-        std::string extension;
-        std::string baseName;
-    };
-
-    inline std::string randomString(int size = 32)
+    std::string randomString(int size)
     {
         std::string charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         std::string result;
@@ -40,7 +24,7 @@ namespace ESP32WebServer
         return result;
     }
 
-    inline std::string getTempFolder()
+    std::string getTempFolder()
     {
         return TEMP_FOLDER + randomString(8);
     }
@@ -51,19 +35,19 @@ namespace ESP32WebServer
      *
      **/
 
-    inline std::string unzip(const std::string &filePath)
+    std::string unzip(const std::string &filePath)
     {
         const std::string unzippedFolder = getTempFolder();
         LittleFS.mkdir(unzippedFolder.c_str());
 
         TarUnpacker *TARUnpacker = new TarUnpacker();
 
-        TARUnpacker->haltOnError(true);                                                            // stop on fail (manual restart/reset required)
-        TARUnpacker->setTarVerify(true);                                                           // true = enables health checks but slows down the overall process
-        TARUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);                        // prevent the partition from exploding, recommended
-        TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);                // prints the untarring progress for each individual file
-        TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback); // print the filenames as they're expanded
-        TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);                // tar log verbosity
+        TARUnpacker->haltOnError(true);
+        TARUnpacker->setTarVerify(true);
+        TARUnpacker->setupFSCallbacks(targzTotalBytesFn, targzFreeBytesFn);
+        TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
+        TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
+        TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);
 
         if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, unzippedFolder.c_str()))
         {
@@ -79,7 +63,7 @@ namespace ESP32WebServer
      *
      **/
 
-    inline std::vector<FileInfo> listFiles(const std::string &folderPath, std::vector<FileInfo> &files, const std::string &prefix = "")
+    std::vector<FileInfo> listFiles(const std::string &folderPath, std::vector<FileInfo> &files, const std::string &prefix)
     {
         File folder = LittleFS.open(folderPath.c_str());
         if (!folder || !folder.isDirectory())
@@ -116,13 +100,13 @@ namespace ESP32WebServer
         return files;
     }
 
-    inline std::vector<FileInfo> listFiles(const std::string &folderPath)
+    std::vector<FileInfo> listFiles(const std::string &folderPath)
     {
         std::vector<FileInfo> files;
         return listFiles(folderPath, files);
     }
 
-    static void clearFolder(const std::string &folderPath)
+    void clearFolder(const std::string &folderPath)
     {
         File dir = LittleFS.open(folderPath.c_str());
         if (!dir || !dir.isDirectory())
@@ -145,7 +129,7 @@ namespace ESP32WebServer
      *
      **/
 
-    inline int removeFile(const std::string &filePath)
+    int removeFile(const std::string &filePath)
     {
         if (fileExists(filePath))
         {
@@ -173,7 +157,7 @@ namespace ESP32WebServer
      *
      **/
 
-    inline JsonDocument readJsonFile(const std::string &filePath)
+    JsonDocument readJsonFile(const std::string &filePath)
     {
         if (!fileExists(filePath))
         {
@@ -204,7 +188,7 @@ namespace ESP32WebServer
         return doc;
     }
 
-    inline bool writeJsonFile(const std::string &filePath, const JsonDocument &doc)
+    bool writeJsonFile(const std::string &filePath, const JsonDocument &doc)
     {
         File file = LittleFS.open(filePath.c_str(), "w");
         if (!file)
