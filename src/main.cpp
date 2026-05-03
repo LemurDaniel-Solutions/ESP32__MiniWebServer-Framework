@@ -27,6 +27,9 @@ void setup()
   // Take care of CORS
   // Server->use(Server->cors());
 
+  // Use MDNS
+  Server->dns("myESP32");
+
   Server->root("/web");
   Server->index("/web/index.html");
 

@@ -8,9 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <WiFi.h>
 #include <Arduino.h>
-#include <LittleFS.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -43,6 +41,7 @@ namespace ESP32WebServer
         ~MiniServer();
 
         int start(const int port, const std::string &ip_addr = "0.0.0.0");
+        void dns(const std::string &dnsName);
 
         // Connect to WiFi network via SSID (Name of WiFi) and password
         // If not used, the server will start in AP mode with SSID "ESP32_MiniWebServer" and a default admin page for WiFi configuration
@@ -73,10 +72,11 @@ namespace ESP32WebServer
         // Add default middleware handler
         void use(const RequestHandler &handler);
         void use(const std::string &prefix, const RequestHandler &handler);
-        
+
         RequestHandler cors(const std::string &origin = "*");
 
     private:
+        std::string _dnsName;
         struct sockaddr_in _address;
         unsigned int _address_len;
         int _server_socket;

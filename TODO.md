@@ -4,7 +4,7 @@
 
 - [✅] **Multiple WiFi credentials** — store a list of known networks, try each on startup, auto-switch when signal drops
 - [✅] **Connection watchdog** — detect lost WiFi mid-run and reconnect (or fall back to AP mode)
-- [ ] **mDNS support** — reach device via `esp32.local` instead of bare IP
+- [✅] **mDNS support** — reach device via `esp32.local` instead of bare IP
 
 ## Admin Dashboard
 

@@ -116,6 +116,9 @@ void setup()
     // Without this the device starts in AP mode — see WiFi Setup below.
     // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
 
+    // Optional: set a mDNS hostname — device becomes reachable as myESP32.local
+    // Server->dns("myESP32");
+
     // Optional: serve static files from LittleFS (requires filesystem upload).
     // root() sets the base directory for static files; any request that matches
     // a file in that directory is served automatically.
@@ -165,6 +168,22 @@ On `Server->start()` and every **30 seconds** while offline:
 2. **Sort** matches by signal strength.
 3. **Connect** to each candidate in order (30-second timeout per attempt).
 4. **Fallback to AP mode** if no saved network is reachable.
+
+---
+
+### 📡 mDNS
+
+Instead of typing the device's IP address, assign a hostname and reach it via `<name>.local`:
+
+```cpp
+Server->dns("myESP32");
+Server->start(80);
+// → http://myESP32.local
+```
+
+mDNS requires the host to be on the same local network. It also works after WiFi reconnects automatically. Not available in AP mode.
+
+> **Browser compatibility:** May not resolve with certain Web Browsers. Check `ping myESP32.local` via the terminal.
 
 ---
 

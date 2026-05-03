@@ -19,7 +19,10 @@ namespace ESP32WebServer
      **/
     MiniServer::MiniServer()
     {
-        LittleFS.begin(true);
+        if (!LittleFS.begin(true))
+        {
+            Serial.println("Error setting up File System!");
+        }
         _is_running = false;
     }
     MiniServer::~MiniServer()
@@ -42,15 +45,6 @@ namespace ESP32WebServer
         WiFiUtility::instance().clearWiFiConfig();
     }
 
-    void MiniServer::disableAdminDashboard()
-    {
-        _is_dashboard_enabled = false;
-    }
-    void MiniServer::disableAdmin()
-    {
-        _is_admin_enabled = false;
-        disableAdminDashboard();
-    }
     void MiniServer::defaultAdminSalt(std::string &salt)
     {
         TokenManager::instance().setSalt(salt);
@@ -59,6 +53,11 @@ namespace ESP32WebServer
     void MiniServer::defaultAdminCredentials(std::string &username, std::string &password)
     {
         TokenManager::instance().setCredentials(username, password);
+    }
+
+    void MiniServer::dns(const std::string &dnsName)
+    {
+        _dnsName = dnsName;
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -153,8 +152,10 @@ namespace ESP32WebServer
         use("/", handler);
     }
 
-    RequestHandler MiniServer::cors(const std::string &origin) {
-        const RequestHandler &cors = [origin](Request &req, Response &res){
+    RequestHandler MiniServer::cors(const std::string &origin)
+    {
+        const RequestHandler &cors = [origin](Request &req, Response &res)
+        {
             res.header("Access-Control-Allow-Origin", origin);
         };
         return cors;
@@ -400,6 +401,26 @@ namespace ESP32WebServer
         {
             Serial.println("Failed to listen on socket");
             return 1;
+        }
+
+        if (!_dnsName.empty())
+        {
+            if (!MDNS.begin(_dnsName.c_str()))
+            {
+                Serial.println("mDNS failed to start!");
+            }
+            else
+            {
+                MDNS.addService("http", "tcp", port);
+                Serial.printf("mDNS started: http://%s.local\n", _dnsName.c_str());
+            }
+
+            WiFi.onEvent([this, port](WiFiEvent_t event, WiFiEventInfo_t info)
+                         {
+                MDNS.end();
+                if (MDNS.begin(_dnsName.c_str()))
+                    MDNS.addService("http", "tcp", port); },
+                         ARDUINO_EVENT_WIFI_STA_GOT_IP);
         }
 
         Serial.println("Starting worker tasks...");
