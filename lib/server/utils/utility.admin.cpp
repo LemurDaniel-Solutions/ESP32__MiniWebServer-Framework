@@ -107,7 +107,7 @@ namespace ESP32WebServer
         return username == admin_user && hash == admin_pwd;
     }
 
-    std::string TokenManager::generateSHA256(const std::string &text, const std::string salt)
+    std::string TokenManager::generateSHA256(const std::string &text, const std::string &salt)
     {
         mbedtls_sha256_context ctx;
         mbedtls_sha256_init(&ctx);

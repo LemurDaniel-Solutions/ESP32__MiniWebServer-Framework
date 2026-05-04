@@ -23,7 +23,7 @@ namespace ESP32WebServer
         }
     }
 
-    std::string RequestBody::text()
+    const std::string& RequestBody::text()
     {
         if (!bodyText.empty())
         {
@@ -43,7 +43,7 @@ namespace ESP32WebServer
         return bodyText;
     }
 
-    JsonDocument RequestBody::json()
+    const JsonDocument& RequestBody::json()
     {
         if (bodyJson.size() == 0)
         {
@@ -54,7 +54,7 @@ namespace ESP32WebServer
         return bodyJson;
     }
 
-    std::string RequestBody::file(const std::string &name)
+    const std::string& RequestBody::file(const std::string &name)
     {
         if (!filePath.empty())
         {

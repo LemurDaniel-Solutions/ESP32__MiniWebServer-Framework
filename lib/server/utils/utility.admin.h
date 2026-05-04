@@ -44,7 +44,7 @@ namespace ESP32WebServer
         std::vector<std::string> getCredentials();
 
         bool checkCredentials(const std::string &username, const std::string &password);
-        std::string generateSHA256(const std::string &text, const std::string salt);
+        std::string generateSHA256(const std::string &text, const std::string &salt);
 
         /*-------------------------------------------------------------------------------------------------
          *
