@@ -80,8 +80,8 @@ namespace ESP32WebServer
         void disableAdminDashboard();
 
         // Overrides the default admin credentials
-        void defaultAdminSalt(std::string &salt);
-        void defaultAdminCredentials(std::string &username, std::string &password);
+        void defaultAdminSalt(const std::string &salt);
+        void defaultAdminCredentials(const std::string &username, const std::string &password);
 
     private:
         std::string _dnsName;

@@ -44,12 +44,12 @@ namespace ESP32WebServer
         WiFiUtility::instance().clearWiFiConfig();
     }
 
-    void MiniServer::defaultAdminSalt(std::string &salt)
+    void MiniServer::defaultAdminSalt(const std::string &salt)
     {
         TokenManager::instance().setSalt(salt);
     }
 
-    void MiniServer::defaultAdminCredentials(std::string &username, std::string &password)
+    void MiniServer::defaultAdminCredentials(const std::string &username, const std::string &password)
     {
         TokenManager::instance().setCredentials(username, password);
     }
