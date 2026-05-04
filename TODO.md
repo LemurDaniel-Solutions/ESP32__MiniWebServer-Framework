@@ -10,6 +10,7 @@
 
 - [✅] **Change password** — update admin password via dashboard (UI card exists, backend missing)
 - [ ] **Show current mode** — display whether device is in Station or AP/Hotspot mode
+- [ ] **Update Webiste** — Folder Picker to upload and replace hosted website
 
 ## Server / HTTP
 

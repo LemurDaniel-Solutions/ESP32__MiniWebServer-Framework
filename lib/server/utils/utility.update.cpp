@@ -7,17 +7,17 @@
 namespace ESP32WebServer
 {
 
-    void post_UpdateWebsite(Request &req, Response &res)
+    void post_UploadFile(Request &req, Response &res)
     {
+        const std::string &path = req.query["path"];
+        if (path.empty() || path[0] != '/')
+        {
+            res.status(400).text("Missing or invalid path query parameter");
+            return;
+        }
 
-        const std::string &filePath = req.body.file("web.zip");
-        Serial.print("File located at: ");
-        Serial.println(filePath.c_str());
-
-        clearFolder(FOLDER_WEB);
-        unzip(filePath, FOLDER_WEB);
-
-        post_AdminRestart(req, res);
+        req.body.file(FOLDER_WEB + '/' +  path);
+        res.OK().text("OK");
     }
 
     void post_UpdateCode(Request &req, Response &res)

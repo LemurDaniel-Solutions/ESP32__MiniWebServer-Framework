@@ -8,7 +8,6 @@
 #include <LittleFS.h>
 
 #include <ArduinoJson.h>
-#include <zip.h>
 
 #include <string>
 #include <vector>
@@ -44,14 +43,6 @@ namespace ESP32WebServer
     size_t findBytes(const std::vector<uint8_t> &data, const std::string &pattern, size_t start = 0);
     std::string extractString(const std::vector<uint8_t> &data, size_t start, size_t end);
     std::vector<std::string> split(const std::string &text, const std::string &splitter);
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Unzipping
-     *
-     **/
-
-    void unzip(const std::string &filePath, const std::string &targetFolder);
 
     /*-------------------------------------------------------------------------------------------------
      *

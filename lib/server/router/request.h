@@ -83,7 +83,6 @@ namespace ESP32WebServer
         size_t contentLength = 0;
         std::string contentType = "application/text";
 
-        void clean();
         JsonDocument &json();
         const std::string &text();
         const std::string &file(const std::string &name);

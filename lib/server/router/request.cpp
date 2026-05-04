@@ -13,16 +13,6 @@ namespace ESP32WebServer
      *
      **/
 
-    void RequestBody::clean()
-    {
-        if (!filePath.empty())
-        {
-            LittleFS.remove(filePath.c_str());
-            Serial.print("Removed file: ");
-            Serial.println(filePath.c_str());
-        }
-    }
-
     JsonDocument &RequestBody::json()
     {
         if (bodyJson.size() == 0)
@@ -54,37 +44,36 @@ namespace ESP32WebServer
         return bodyText;
     }
 
-    const std::string &RequestBody::file(const std::string &name)
+    const std::string &RequestBody::file(const std::string &filePath)
     {
         if (!filePath.empty())
-        {
             return filePath;
-        }
 
-        filePath = getTempFolder() + "/" + name;
+        size_t slash = filePath.find_last_of('/');
+        if (slash != std::string::npos)
+            LittleFS.mkdir(filePath.substr(0, slash).c_str());
+
         File tmpFile = LittleFS.open(filePath.c_str(), "w", true);
         if (!tmpFile)
         {
-            Serial.println("Failed to open temp file for body");
-            filePath = "";
+            Serial.printf("Failed to open file for writing: %s\n", filePath);
             return filePath;
         }
 
-        char chunk[256];
+        uint8_t chunk[512];
         size_t written = 0;
         while (written < contentLength)
         {
-            size_t toRead = std::min((size_t)sizeof(chunk), contentLength - written);
+            size_t toRead = std::min(sizeof(chunk), contentLength - written);
             int n = socket.read(chunk, toRead);
             if (n <= 0)
                 break;
-            tmpFile.write((uint8_t *)chunk, n);
+            tmpFile.write(chunk, n);
             written += n;
         }
 
         tmpFile.close();
-        Serial.printf("Body written to temp file: %s (%zu bytes)\n", filePath.c_str(), written);
-
+        Serial.printf("Written: %s (%zu bytes)\n", filePath.c_str(), written);
         return filePath;
     }
 
@@ -163,10 +152,7 @@ namespace ESP32WebServer
      *
      **/
 
-    Request::~Request()
-    {
-        body.clean();
-    }
+    Request::~Request() {}
 
     Request Request::parse(int clientSocket)
     {
