@@ -75,6 +75,14 @@ namespace ESP32WebServer
 
         RequestHandler cors(const std::string &origin = "*");
 
+        // Disables the admin dashboard entirly
+        void disableAdmin();
+        void disableAdminDashboard();
+
+        // Overrides the default admin credentials
+        void defaultAdminSalt(std::string &salt);
+        void defaultAdminCredentials(std::string &username, std::string &password);
+
     private:
         std::string _dnsName;
         struct sockaddr_in _address;
@@ -85,13 +93,6 @@ namespace ESP32WebServer
         int _is_running = false;
         int _is_admin_enabled = true;
         int _is_dashboard_enabled = true;
-        // Disables the admin dashboard entirly
-        void disableAdmin();
-        void disableAdminDashboard();
-
-        // Overrides the default admin credentials
-        void defaultAdminSalt(std::string &salt);
-        void defaultAdminCredentials(std::string &username, std::string &password);
 
         void processHandlers(Request &req, Response &res);
         void handleClient(int client_socket);

@@ -23,7 +23,6 @@ namespace ESP32WebServer
         {
             Serial.println("Error setting up File System!");
         }
-        _is_running = false;
     }
     MiniServer::~MiniServer()
     {
@@ -53,6 +52,16 @@ namespace ESP32WebServer
     void MiniServer::defaultAdminCredentials(std::string &username, std::string &password)
     {
         TokenManager::instance().setCredentials(username, password);
+    }
+
+    void MiniServer::disableAdmin()
+    {
+        _is_admin_enabled = false;
+        disableAdminDashboard();
+    }
+    void MiniServer::disableAdminDashboard()
+    {
+        _is_dashboard_enabled = false;
     }
 
     void MiniServer::dns(const std::string &dnsName)
