@@ -7,6 +7,9 @@
 namespace EspWeb
 {
 
+    std::string FOLDER_TEMP = "/tmp";
+    std::string FOLDER_WEB = "/web";
+
     std::string getTempFolder()
     {
         return std::string(FOLDER_TEMP) + "/" + randomString(8);
@@ -256,7 +259,7 @@ namespace EspWeb
 
     bool writeJsonFile(const std::string &filePath, const JsonDocument &doc)
     {
-        File file = LittleFS.open(filePath.c_str(), "w");
+        File file = LittleFS.open(filePath.c_str(), "w", true);
         if (!file)
         {
             throw "CRITICAL: Failed to open File to write";

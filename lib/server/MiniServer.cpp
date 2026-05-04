@@ -8,15 +8,7 @@
 
 namespace EspWeb
 {
-    /**
-     ***********************************************
-     ************************************************
-     * Setting up the MiniServer with Constructor and Destructor:
-     * - Create a socket
-     * - Bind it to the specified IP and port
-     * - Listen for incoming connections
-     *
-     **/
+
     MiniServer::MiniServer()
     {
         if (!LittleFS.begin(true))
@@ -257,6 +249,7 @@ namespace EspWeb
 
     void MiniServer::root(const std::string &folder_path, const std::string &prefix)
     {
+        FOLDER_WEB = folder_path;
         std::vector<FileInfo> files = listFiles(folder_path);
         for (FileInfo info : files)
         {
@@ -352,8 +345,6 @@ namespace EspWeb
             Serial.println("Server is already running");
             return 0;
         }
-
-        clearFolder(FOLDER_TEMP);
 
         if (_is_admin_enabled)
         {

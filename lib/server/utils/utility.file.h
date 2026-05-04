@@ -12,11 +12,10 @@
 #include <string>
 #include <vector>
 
-#define FOLDER_TEMP "/tmp"
-#define FOLDER_WEB "/web"
-
 namespace EspWeb
 {
+    extern std::string FOLDER_TEMP;
+    extern std::string FOLDER_WEB;
 
     struct FileInfo
     {

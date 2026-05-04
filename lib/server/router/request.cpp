@@ -219,4 +219,27 @@ namespace EspWeb
         return request;
     }
 
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Authentication check
+     *
+     **/
+
+    bool Request::isApiTokenValid()
+    {
+        const auto &header = headers.find("Authorization");
+        if (header == headers.end())
+            return false;
+        return TokenManager::instance().checkPermToken(header->second);
+    }
+
+    bool Request::isSessionTokenValid()
+    {
+        const auto &entry = cookies.find(DEFAULT_ADMIN_COOKIE);
+        if (entry == cookies.end())
+            return false;
+        return TokenManager::instance().checkToken(entry->second);
+    }
+
 }

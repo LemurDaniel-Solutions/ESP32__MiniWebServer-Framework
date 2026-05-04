@@ -948,7 +948,7 @@ namespace EspWeb
     void auth_handler(Request &req, Response &res)
     {
         // redirect to dashboard
-        if (req.path == "/admin" && TokenManager::instance().isSessionTokenValid(req))
+        if (req.path == "/admin" && req.isSessionTokenValid())
             res.Redirect("/admin/dashboard").finalize();
 
         // Unprotected routes
@@ -956,7 +956,7 @@ namespace EspWeb
             return;
 
         // Only allow session token for admin actions
-        if (!TokenManager::instance().isSessionTokenValid(req))
+        if (!req.isSessionTokenValid())
             res.Redirect("/admin").finalize();
         else
             res.OK().text("Authenticated");
@@ -1017,14 +1017,9 @@ namespace EspWeb
         std::string newAdminUser = req.body.json()["admin_user"].as<std::string>();
         std::string newAdminPwd = req.body.json()["admin_pwd"].as<std::string>();
 
-        if (TokenManager::instance().setCredentials(newAdminUser, newAdminPwd))
-        {
-            res.OK().text("Admin credentials updated");
-        }
-        else
-        {
-            res.InternalServerError();
-        }
+        TokenManager::instance().setCredentials(newAdminUser, newAdminPwd);
+
+        res.OK().text("Admin credentials updated");
     }
 
     void post_AdminRestart(Request &req, Response &res)

@@ -11,6 +11,7 @@
 #include <vector>
 #include <map>
 
+#include <utils/utility.token.h>
 #include <utils/utility.file.h>
 
 namespace EspWeb
@@ -130,5 +131,14 @@ namespace EspWeb
         RequestBody body;
 
         static Request parse(int clientSocket);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Authentication check
+         *
+         **/
+
+        bool isApiTokenValid();
+        bool isSessionTokenValid();
     };
 }

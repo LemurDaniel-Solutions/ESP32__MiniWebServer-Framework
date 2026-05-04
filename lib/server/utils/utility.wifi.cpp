@@ -10,7 +10,7 @@ namespace EspWeb
     {
         while (true)
         {
-            vTaskDelay(pdMS_TO_TICKS(15000));
+            vTaskDelay(pdMS_TO_TICKS(30000));
             WiFiUtility::instance().setup();
         }
     }
