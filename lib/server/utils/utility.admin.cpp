@@ -43,11 +43,7 @@ namespace ESP32WebServer
             doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
         }
 
-        std::string salt = DEFAULT_ADMIN_SALT;
-        if (doc["admin_salt"].is<std::string>())
-        {
-            salt = doc["admin_salt"].as<std::string>();
-        }
+        std::string salt = getCredentials()[0];
 
         const std::string password_hash = generateSHA256(password, salt);
 
@@ -69,7 +65,10 @@ namespace ESP32WebServer
         }
         else
         {
-            creds.push_back(DEFAULT_ADMIN_SALT);
+            // Randomly create a salt on startup
+            const std::string salt = randomString(32);
+            creds.push_back(salt);
+            setSalt(salt);
         }
 
         if (doc["admin_user"].is<std::string>())
@@ -114,7 +113,7 @@ namespace ESP32WebServer
         mbedtls_sha256_starts(&ctx, 0);
 
         mbedtls_sha256_update(&ctx, (unsigned char *)text.c_str(), text.length());
-        mbedtls_sha256_update(&ctx, (unsigned char *)salt.c_str(), 16);
+        mbedtls_sha256_update(&ctx, (unsigned char *)salt.c_str(), salt.length());
 
         unsigned char shaResult[32];
 
@@ -171,6 +170,7 @@ namespace ESP32WebServer
         if (currentTime > entry->second)
         {
             _ADMIN_TOKENS.erase(entry);
+            return false;
         }
 
         return true;

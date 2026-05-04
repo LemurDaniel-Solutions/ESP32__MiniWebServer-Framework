@@ -23,7 +23,18 @@ namespace ESP32WebServer
         }
     }
 
-    const std::string& RequestBody::text()
+    JsonDocument &RequestBody::json()
+    {
+        if (bodyJson.size() == 0)
+        {
+            this->text();
+            deserializeJson(bodyJson, bodyText.c_str());
+        }
+
+        return bodyJson;
+    }
+
+    const std::string &RequestBody::text()
     {
         if (!bodyText.empty())
         {
@@ -43,18 +54,7 @@ namespace ESP32WebServer
         return bodyText;
     }
 
-    const JsonDocument& RequestBody::json()
-    {
-        if (bodyJson.size() == 0)
-        {
-            this->text();
-            deserializeJson(bodyJson, bodyText.c_str());
-        }
-
-        return bodyJson;
-    }
-
-    const std::string& RequestBody::file(const std::string &name)
+    const std::string &RequestBody::file(const std::string &name)
     {
         if (!filePath.empty())
         {

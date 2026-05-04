@@ -20,7 +20,6 @@
 #define DEFAULT_ADMIN_COOKIE "adminToken"
 #define DEFAULT_ADMIN_USER "admin"
 #define DEFAULT_ADMIN_PWD "admin"
-#define DEFAULT_ADMIN_SALT "5B63F3F0104D1649B8E1A9C9E5F2A1"
 
 namespace ESP32WebServer
 {

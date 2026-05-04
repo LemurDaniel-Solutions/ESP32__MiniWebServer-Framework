@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#include <MiniWebServer.h>
+#include <MiniServer.h>
 
 #include <routes/routes.example.h>
 
