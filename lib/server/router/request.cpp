@@ -46,7 +46,7 @@ namespace ESP32WebServer
 
     const std::string &RequestBody::file(const std::string &filePath)
     {
-        if (!filePath.empty())
+        if (filePath.empty())
             return filePath;
 
         size_t slash = filePath.find_last_of('/');

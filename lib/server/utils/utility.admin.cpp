@@ -540,6 +540,48 @@ namespace ESP32WebServer
             background: #f9f9f9;
         }
 
+        .website-upload {
+            color: white !important;
+            border: 2px solid;
+            box-sizing: border-box;
+            background: var(--primary);
+            border-radius: 6px;
+            padding: 10px 5px 0px 5px;
+            margin: 8px 0px 15px 0;
+            display: inline-block;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        .website-upload h3 {
+            color: white !important;
+        }
+
+        progress {
+            border-radius: 7px;
+            height: 14px;
+            box-shadow: 1px 1px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        progress::-webkit-progress-bar {
+            background: white;
+            border-radius: 7px;
+        }
+
+        progress::-webkit-progress-value {
+            background: var(--primary);
+            border-radius: 7px;
+        }
+
+        .website-upload:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
         input:focus {
             outline: none;
             border-color: var(--primary);
@@ -671,8 +713,15 @@ namespace ESP32WebServer
         }
 
         @keyframes pop-in {
-            from { transform: scale(0.85); opacity: 0; }
-            to   { transform: scale(1);    opacity: 1; }
+            from {
+                transform: scale(0.85);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
 
         .modal-icon {
@@ -726,8 +775,12 @@ namespace ESP32WebServer
                 <h1>Admin Dashboard</h1>
             </div>
             <div style="display:flex; gap:10px;">
-                <button onclick="confirmRestart()" class="btn btn-success"><i class="fa-solid fa-power-off"></i> Restart Device</button>
-                <a href="/admin" onClick="logOut()" class="btn btn-danger"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+                <button onclick="openModal('modal-upload-website')" class="btn"><i class="fa-solid fa-folder"></i>
+                    Upload Website</button>
+                <button onclick="confirmRestart()" class="btn btn-success"><i class="fa-solid fa-power-off"></i> Restart
+                    Device</button>
+                <a href="/admin" onClick="logOut()" class="btn btn-danger"><i
+                        class="fa-solid fa-right-from-bracket"></i> Logout</a>
             </div>
         </header>
 
@@ -769,9 +822,12 @@ namespace ESP32WebServer
                         <input type="password" id="wifi-password" placeholder="WiFi Password">
                     </div>
                     <div class="btn-row">
-                        <button onclick="addNetwork()" class="btn btn-sm"><i class="fa-solid fa-floppy-disk"></i> Save</button>
-                        <button onclick="scanWiFi()" class="btn btn-sm btn-secondary"><i class="fa-solid fa-rotate"></i> Rescan</button>
-                        <button onclick="toggleAddForm(false)" class="btn btn-sm btn-secondary"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                        <button onclick="addNetwork()" class="btn btn-sm"><i class="fa-solid fa-floppy-disk"></i>
+                            Save</button>
+                        <button onclick="scanWiFi()" class="btn btn-sm btn-secondary"><i class="fa-solid fa-rotate"></i>
+                            Rescan</button>
+                        <button onclick="toggleAddForm(false)" class="btn btn-sm btn-secondary"><i
+                                class="fa-solid fa-xmark"></i> Cancel</button>
                     </div>
                 </div>
                 <div style="margin-top:15px;">
@@ -807,8 +863,10 @@ namespace ESP32WebServer
                         <input type="text" id="token-name" placeholder="z.B. Home Server">
                     </div>
                     <div class="btn-row">
-                        <button onclick="createToken()" class="btn btn-sm"><i class="fa-solid fa-plus"></i> Erstellen</button>
-                        <button onclick="toggleTokenForm(false)" class="btn btn-sm btn-secondary"><i class="fa-solid fa-xmark"></i> Abbrechen</button>
+                        <button onclick="createToken()" class="btn btn-sm"><i class="fa-solid fa-plus"></i>
+                            Erstellen</button>
+                        <button onclick="toggleTokenForm(false)" class="btn btn-sm btn-secondary"><i
+                                class="fa-solid fa-xmark"></i> Abbrechen</button>
                     </div>
                 </div>
                 <div style="margin-top:15px;">
@@ -840,7 +898,8 @@ namespace ESP32WebServer
             <p>The network was added. Changes take effect after a restart.</p>
             <div class="btn-row">
                 <button onclick="closeModal('modal-wifi-saved')" class="btn btn-secondary btn-sm">Later</button>
-                <button onclick="doRestart()" class="btn btn-sm"><i class="fa-solid fa-power-off"></i> Restart Now</button>
+                <button onclick="doRestart()" class="btn btn-sm"><i class="fa-solid fa-power-off"></i> Restart
+                    Now</button>
             </div>
         </div>
     </div>
@@ -852,7 +911,8 @@ namespace ESP32WebServer
             <p>The ESP32 will be restarted. The connection will be interrupted.</p>
             <div class="btn-row">
                 <button onclick="closeModal('modal-restart')" class="btn btn-secondary btn-sm">Cancel</button>
-                <button onclick="doRestart()" class="btn btn-danger btn-sm"><i class="fa-solid fa-power-off"></i> Restart</button>
+                <button onclick="doRestart()" class="btn btn-danger btn-sm"><i class="fa-solid fa-power-off"></i>
+                    Restart</button>
             </div>
         </div>
     </div>
@@ -864,6 +924,22 @@ namespace ESP32WebServer
             <p>The old Credentials are no longer valid.</p>
             <div class="btn-row">
                 <button onclick="closeModal('modal-admin-saved')" class="btn btn-danger btn-sm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-upload-website">
+        <div class="modal">
+            <div class="modal-icon"><i class="fa-solid fa-folder"></i></div>
+            <label class="website-upload">
+                <input id="upload-website-picker" type="file" webkitdirectory directory multiple />
+                <h3 id="display-upload-folder">Select Folder to upload</h3>
+            </label>
+            <progress id="upload-website-progress" max="100" hidden></progress>
+            <p style="margin-bottom:10px;"><strong id="new-token-name"></strong></p>
+            <div class="btn-row">
+                <button id="btn-upload-webiste-close" onclick="closeModal('modal-upload-website')"
+                    class="btn btn-sm btn-secondary">Close</button>
             </div>
         </div>
     </div>
@@ -888,7 +964,7 @@ namespace ESP32WebServer
         async function doRestart() {
             closeModal('modal-wifi-saved');
             closeModal('modal-restart');
-            await fetch('/admin/restart', { method: 'POST' }).catch(() => {});
+            await fetch('/admin/restart', { method: 'POST' }).catch(() => { });
         }
 
         async function loadWiFiConfig() {
@@ -941,7 +1017,7 @@ namespace ESP32WebServer
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ssid })
-            }).catch(() => {});
+            }).catch(() => { });
             loadNetworks();
         }
 
@@ -1042,12 +1118,44 @@ namespace ESP32WebServer
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
-            }).catch(() => {});
+            }).catch(() => { });
             loadPermTokens();
         }
 
         function copyNewToken() {
-            navigator.clipboard.writeText(document.getElementById('new-token-value').textContent).catch(() => {});
+            navigator.clipboard.writeText(document.getElementById('new-token-value').textContent).catch(() => { });
+        }
+        document.getElementById('upload-website-picker').addEventListener('change', changeUploadFolder);
+        async function changeUploadFolder(e) {
+            const btnClose = document.getElementById('btn-upload-webiste-close');
+            const progress = document.getElementById('upload-website-progress');
+            btnClose.disabled = true;
+            progress.hidden = false;
+            progress.value = 0;
+
+            await fetch('/upload/clear/website');
+            for (i = 0; i < e.target.files.length; i++) {
+                const file = e.target.files[i];
+                const relativePath = file.webkitRelativePath.split("/").slice(1).join("/")
+
+                const arrayBuffer = await file.arrayBuffer();
+                console.log(`Sende ${file.name}, Größe: ${arrayBuffer.byteLength} Bytes`);
+                await fetch(`/upload/file?path=${encodeURIComponent(relativePath)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'Content-Length': arrayBuffer.byteLength.toString()
+                    },
+                    body: arrayBuffer // Wir senden den Buffer, nicht das File-Objekt
+                }).catch(err => alert(err));
+
+                progress.value = i / e.target.files.length * 100;
+            }
+
+            btnClose.disabled = false;
+            progress.hidden = true;
+
+            alert('Finished Uploading. Restart may be required!');
         }
 
         window.onload = () => {

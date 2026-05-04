@@ -19,6 +19,7 @@ namespace ESP32WebServer
 {
     void post_UploadFile(Request &req, Response &res);
     void post_UpdateCode(Request &req, Response &res);
+    void get_ClearWebsite(Request &req, Response &res);
 
     class UpdateRouter : public ESP32WebServer::Router
     {
@@ -29,6 +30,7 @@ namespace ESP32WebServer
 
             route("POST", "/upload/code", post_UpdateCode);
             route("POST", "/upload/file", post_UploadFile);
+            route("GET", "/upload/clear/website", get_ClearWebsite);
         }
     };
 }

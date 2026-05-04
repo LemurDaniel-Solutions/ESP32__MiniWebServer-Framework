@@ -7,16 +7,23 @@
 namespace ESP32WebServer
 {
 
+    void get_ClearWebsite(Request &req, Response &res)
+    {
+        clearFolder(FOLDER_WEB);
+        res.OK().text("OK");
+    }
+
     void post_UploadFile(Request &req, Response &res)
     {
         const std::string &path = req.query["path"];
-        if (path.empty() || path[0] != '/')
+        if (path.empty())
         {
             res.status(400).text("Missing or invalid path query parameter");
             return;
         }
 
-        req.body.file(FOLDER_WEB + '/' +  path);
+        std::string fullPath = std::string(FOLDER_WEB) + "/" + path;
+        req.body.file(fullPath);
         res.OK().text("OK");
     }
 
