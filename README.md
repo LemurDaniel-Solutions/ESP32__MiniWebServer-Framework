@@ -18,7 +18,7 @@
 
 A lightweight **Mini WebServer Framework** for ESP32 microcontrollers, built as a personal project.
 
-Add it to your PlatformIO project via `lib_deps` and include `server.h`.
+Add it to your PlatformIO project via `lib_deps` and include `MiniServer.h`.
 
 May not work with the RISC V Processor
 - ESP32-C3
@@ -44,7 +44,7 @@ It Should work with following families:
 📦 ESP32 Mini WebServer Framework
 ├── 📁 lib/
 │   └── 📁 server/
-│       ├── 🌐 server.h/.cpp            # Core web server
+│       ├── 🌐 MiniServer.h/.cpp         # Core web server
 │       ├── 📁 router/
 │       │   ├── 🛤️ router.h/.cpp        # Routing engine
 │       │   ├── 📥 request.h/.cpp       # HTTP request handling
@@ -104,7 +104,7 @@ board_build.include_files_txt =
 
 ```cpp
 #include <Arduino.h>
-#include <server.h>
+#include <MiniServer.h>
 
 void setup()
 {
@@ -287,7 +287,7 @@ namespace routes_example
 
 ```cpp
 #include <Arduino.h>
-#include <server.h>
+#include <MiniServer.h>
 #include <routes/routes.example.h>
 
 void setup()
