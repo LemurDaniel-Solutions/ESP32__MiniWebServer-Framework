@@ -955,7 +955,8 @@ namespace EspWeb
         if (req.path == "/admin" || req.path == "/admin/login")
             return;
 
-        if (!TokenManager::instance().isSessionTokenValid(req) && !TokenManager::instance().isPermTokenValid(req))
+        // Only allow session token for admin actions
+        if (!TokenManager::instance().isSessionTokenValid(req))
             res.Redirect("/admin").finalize();
         else
             res.OK().text("Authenticated");

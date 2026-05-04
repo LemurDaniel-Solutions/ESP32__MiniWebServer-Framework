@@ -26,7 +26,7 @@ namespace EspWeb
     public:
         UpdateRouter()
         {
-            use("/upload", auth_handler);
+            use("/upload", auth());
 
             route("POST", "/upload/code", post_UpdateCode);
             route("POST", "/upload/file", post_UploadFile);

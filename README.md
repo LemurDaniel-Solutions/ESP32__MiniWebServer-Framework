@@ -380,13 +380,21 @@ These set the status code and fill in a default body if none was set yet:
 | Method | Status | Default body |
 |--------|--------|-------------|
 | `OK()` | 200 | `"OK"` |
+| `Created()` | 201 | `"Created"` |
+| `BadRequest()` | 400 | `"Bad Request"` |
+| `Unauthorized()` | 401 | `"Unauthorized"` |
+| `Forbidden()` | 403 | `"Forbidden"` |
 | `NotFound()` | 404 | `"Not Found"` |
 | `InternalServerError()` | 500 | `"Internal Server Error"` |
+| `Redirect(location)` | 302 | *(sets `Location` header)* |
 
 ```cpp
-res.json(doc).OK();              // 200, JSON body
-res.text("Missing").NotFound();  // 404, custom text body
-res.text("Created").status(201); // any status code
+res.json(doc).OK();                        // 200, JSON body
+res.json(doc).Created();                   // 201, JSON body
+res.text("Missing").NotFound();            // 404, custom text body
+res.text("No permission").Forbidden();     // 403, custom text body
+res.Redirect("/login").finalize();         // 302, redirect
+res.text("Created").status(201);           // any status code
 ```
 
 ### Stopping the middleware chain

@@ -24,6 +24,7 @@
 
 - [ ] **HTTPS / TLS** — optional TLS wrapper for the TCP socket
 - [✅] **Salt Hashin** — Use more modern approach for password hashing
+- [] **API Tokens** — Assign specic actions to tokens.
 
 ## Developer Experience
 
