@@ -4,7 +4,7 @@
 
 #include <router/request.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     /*-------------------------------------------------------------------------------------------------

@@ -6,7 +6,7 @@
 
 /********** TCP Server Implementation **********/
 
-namespace ESP32WebServer
+namespace EspWeb
 {
     /**
      ***********************************************
@@ -161,15 +161,6 @@ namespace ESP32WebServer
         use("/", handler);
     }
 
-    RequestHandler MiniServer::cors(const std::string &origin)
-    {
-        const RequestHandler &cors = [origin](Request &req, Response &res)
-        {
-            res.header("Access-Control-Allow-Origin", origin);
-        };
-        return cors;
-    }
-
     /*-------------------------------------------------------------------------------------------------
      *
      * Implement Routes
@@ -186,7 +177,7 @@ namespace ESP32WebServer
         addRoute(method, path, wrapper);
     }
 
-    void MiniServer::registerRouter(const ESP32WebServer::Router &router)
+    void MiniServer::registerRouter(const EspWeb::Router &router)
     {
         for (const auto &route : router.routes)
         {
@@ -244,7 +235,7 @@ namespace ESP32WebServer
     {
         Serial.printf("Adding file response: %s -> %s\n", path.c_str(), file_path.c_str());
 
-        const RequestHandler &handler = [file_path](const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+        const RequestHandler &handler = [file_path](const EspWeb::Request &req, EspWeb::Response &res)
         {
             std::string ext;
             auto dot = file_path.find_last_of('.');
@@ -366,10 +357,10 @@ namespace ESP32WebServer
 
         if (_is_admin_enabled)
         {
-            this->registerRouter(ESP32WebServer::AdminRouter(_is_dashboard_enabled));
+            this->registerRouter(EspWeb::AdminRouter(_is_dashboard_enabled));
         }
 
-        this->registerRouter(ESP32WebServer::UpdateRouter());
+        this->registerRouter(EspWeb::UpdateRouter());
 
         if (!WiFiUtility::instance().isNetworkReady())
         {
@@ -433,7 +424,7 @@ namespace ESP32WebServer
         }
 
         Serial.println("Starting worker tasks...");
-        for (int i = 0; i < ESP32WebServer::WORKER_TASK_COUNT; i++)
+        for (int i = 0; i < EspWeb::WORKER_TASK_COUNT; i++)
         {
             std::string taskName = "worker" + std::to_string(i);
             xTaskCreatePinnedToCore(workerTask, taskName.c_str(), 8192, this, 1, NULL, i % 2);

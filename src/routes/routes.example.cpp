@@ -4,12 +4,12 @@
 
 namespace routes_example
 {
-    void Router::get_hello(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_hello(EspWeb::Request &req, EspWeb::Response &res)
     {
         res.text("Hello, World! This is a simple response from the ESP32.").status(200);
     }
 
-    void Router::get_status(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_status(EspWeb::Request &req, EspWeb::Response &res)
     {
         JsonDocument status;
 
@@ -22,12 +22,12 @@ namespace routes_example
         res.json(status).status(200);
     }
 
-    void Router::get_example(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_example(EspWeb::Request &req, EspWeb::Response &res)
     {
         res.text("This is an example route!").status(200);
     }
 
-    void Router::post_data(const ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::post_data(EspWeb::Request &req, EspWeb::Response &res)
     {
         JsonDocument response;
         response["message"] = "Data received successfully";

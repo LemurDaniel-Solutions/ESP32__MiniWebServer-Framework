@@ -10,7 +10,7 @@
 #include <string>
 #include <map>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
     class Response
     {
@@ -54,10 +54,16 @@ namespace ESP32WebServer
          *
          * Common status codes
          **/
+        Response &status(int status);
+
         Response &OK();
+        Response &Created();
+        Response &BadRequest();
+        Response &Unauthorized();
+        Response &Forbidden();
         Response &NotFound();
         Response &InternalServerError();
-        Response &status(int status);
+        Response &Redirect(const std::string &location);
 
         /*-------------------------------------------------------------------------------------------------
          *

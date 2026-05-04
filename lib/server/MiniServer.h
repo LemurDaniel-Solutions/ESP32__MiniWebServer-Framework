@@ -25,7 +25,7 @@
 #include <utils/utility.update.h>
 #include <router/router.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     const int WORKER_TASK_COUNT = 4;
@@ -56,7 +56,7 @@ namespace ESP32WebServer
         void staticFile(const std::string &path, const std::string &file_path);
 
         // Register routes with method, path and handler function
-        void registerRouter(const ESP32WebServer::Router &router);
+        void registerRouter(const EspWeb::Router &router);
         void route(const std::string &method, const std::string &path, const RequestHandler &handler);
 
         // Quick functions
@@ -71,7 +71,8 @@ namespace ESP32WebServer
         void use(const RequestHandler &handler);
         void use(const std::string &prefix, const RequestHandler &handler);
 
-        RequestHandler cors(const std::string &origin = "*");
+        RequestHandler cors(const std::string &origin = "*") { return Router::cors(origin); }
+        RequestHandler auth() { return Router::auth(); }
 
         // Disables the admin dashboard entirly
         void disableAdmin();

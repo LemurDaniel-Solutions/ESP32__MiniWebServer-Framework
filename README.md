@@ -38,35 +38,6 @@ It Should work with following families:
 - 💖 **Open Source** contributors worldwide
 
 
-## 📁 Project Structure
-
-```
-📦 ESP32 Mini WebServer Framework
-├── 📁 lib/
-│   └── 📁 server/
-│       ├── 🌐 MiniServer.h/.cpp         # Core web server
-│       ├── 📁 router/
-│       │   ├── 🛤️ router.h/.cpp        # Routing engine
-│       │   ├── 📥 request.h/.cpp       # HTTP request handling
-│       │   └── 📤 response.h/.cpp      # HTTP response handling
-│       └── 📁 utils/
-│           ├── 🔐 utility.admin.h/.cpp # Admin Dashboard
-│           ├── 🛜 utility.wifi.h/.cpp  # WiFi utility
-│           ├── 📂 utility.file.h/.cpp  # File utility
-│           └── 🔄 utility.update.h/.cpp # OTA update utility
-├── 📁 src/                             # Example application
-│   ├── 🎯 main.cpp
-│   └── 📁 routes/
-│       └── 🛤️ routes.example.h/.cpp
-├── 📁 data/
-│   └── 📁 web/
-│       ├── 🎨 index.html               # Example web interface
-│       └── 🎨 main.css                 # Example styles
-├── 📋 library.json                     # PlatformIO library config
-├── ⚙️ platformio.ini                   # Build configuration
-└── 📖 README.md                        # This file
-```
-
 ## 📦 Installation
 
 Add the following to your `platformio.ini`:
@@ -86,6 +57,67 @@ board_build.include_files_txt =
     data/web/index.html
     data/web/main.css
 ```
+
+---
+
+## 🔐 Admin Dashboard
+
+The built-in Admin Dashboard is available at `/admin` on every device. No extra configuration needed — it's always on.
+
+![Admin Dashboard](.assets/admin.dashboard.overview.png)
+
+It provides:
+
+- **WiFi** — scan for nearby networks, select one, enter the password and save. Credentials persist across reboots. Multiple networks can be stored; the device always picks the strongest signal.
+- **Security** — change the admin username and password.
+- **API Tokens** — create and manage permanent API tokens for programmatic access.
+- **Restart** — reboot the device directly from the browser.
+
+#### Default credentials
+
+| Field | Default |
+|-------|---------|
+| Username | `admin` |
+| Password | `admin` |
+
+Override in code before calling `start()`:
+
+```cpp
+// Disable the admin dashboard UI (keeps the /admin API routes)
+Server->disableAdminDashboard();
+
+// Disable the admin dashboard and all /admin routes entirely
+Server->disableAdmin();
+```
+
+#### Permanent API Tokens
+
+Permanent tokens can be created from the **API Tokens** section of the admin dashboard. Unlike session tokens (which expire after 1 hour), permanent tokens persist across reboots and never expire.
+
+Use them in API requests via the `Authorization` header:
+
+```http
+GET /admin/wifi/active HTTP/1.1
+Authorization: <your-token>
+```
+
+Tokens are stored in `/admin_perm_token.json` on LittleFS.
+
+#### Protecting your own routes
+
+Use the built-in auth and CORS handlers to secure your API:
+
+```cpp
+// On the server
+Server->use("/api", Server->auth());
+Server->use(Server->cors());
+
+// Inside a Router subclass
+use("/api", auth());
+route("GET", "/myApi", { cors(), get_myApi });
+```
+
+Requests without a valid `Authorization` token or `SessionToken` receive a `401 Unauthorized` response. Tokens are created and managed in the Admin Dashboard.
 
 ---
 
@@ -110,11 +142,7 @@ void setup()
 {
     Serial.begin(115200);
 
-    ESP32WebServer::MiniServer *Server = new ESP32WebServer::MiniServer();
-
-    // Optional: pre-save WiFi credentials in code.
-    // Without this the device starts in AP mode — see WiFi Setup below.
-    // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
+    EspWeb::MiniServer *Server = new EspWeb::MiniServer();
 
     // Optional: set a mDNS hostname — device becomes reachable as myESP32.local
     // Server->dns("myESP32");
@@ -129,7 +157,7 @@ void setup()
     // Optional: Take care of CORS
     // Server->use(Server->cors());
 
-    Server->get("/hello", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+    Server->get("/hello", [](EspWeb::Request &req, EspWeb::Response &res) {
         res.text("Hello from ESP32!").OK();
     });
 
@@ -141,9 +169,16 @@ void loop() { delay(10); }
 
 After uploading, open the serial monitor — the device prints its IP address once connected. Navigate to that address in your browser.
 
+Optionally assign a hostname so the device is reachable as `myESP32.local` instead of an IP (same network only, not available in AP mode):
+
+```cpp
+Server->dns("myESP32");
+```
+
 ---
 
-### 🛜 WiFi Setup
+<details>
+<summary>🛜 Setup WiFi via Code</summary>
 
 The device supports two WiFi modes that switch automatically:
 
@@ -151,9 +186,7 @@ The device supports two WiFi modes that switch automatically:
 
 **AP mode** — fallback when no saved network is in range. The device creates a hotspot called `ESP32_MiniWebServer` at `192.168.4.1`. Open the Admin Dashboard at `/admin` to scan for networks, enter credentials, and save them.
 
-#### Configuring WiFi in code
-
-Credentials are saved permanently to LittleFS. Multiple networks can be stored — on each boot the device picks whichever saved network has the strongest signal:
+Credentials can also be saved directly in code and are stored permanently to LittleFS. Multiple networks can be stored — on each boot the device picks whichever saved network has the strongest signal:
 
 ```cpp
 Server->connectWiFi("HOME_SSID", "HOME_PASSWORD");
@@ -172,35 +205,25 @@ On `Server->start()` and every **30 seconds** while offline:
 3. **Connect** to each candidate in order (30-second timeout per attempt).
 4. **Fallback to AP mode** if no saved network is reachable.
 
----
-
-### 📡 mDNS
-
-Instead of typing the device's IP address, assign a hostname and reach it via `<name>.local`:
-
-```cpp
-Server->dns("myESP32");
-Server->start(80);
-// → http://myESP32.local
-```
-
-mDNS requires the host to be on the same local network. It also works after WiFi reconnects automatically. Not available in AP mode.
-
-> **Browser compatibility:** May not resolve with certain Web Browsers. Check `ping myESP32.local` via the terminal.
+</details>
 
 ---
 
-### 🔨 Build & Upload
 
-> Upload the filesystem **before** the firmware — otherwise the firmware boots without the files it expects.
+<details>
+<summary>🔨 Upload Website</summary>
 
-**1. Upload the filesystem** — only required when serving static files from LittleFS (e.g. a frontend). Skip if you are not using `Server->root()` or `Server->staticFile()`.
+**Upload firmware and open the serial monitor**
+
+![Upload and Monitor](.assets/pio.upload-monitor.png)
+
+**Upload the filesystem** — only required when serving static files from LittleFS (e.g. a frontend):
 
 ![Build Filesystem](.assets/pio.build-filesystem.png)
 
-**2. Upload firmware and open the serial monitor**
+> ⚠️ This overwrites the entire LittleFS partition — including any saved WiFi credentials, API tokens, and other config files set via the Admin Dashboard. For a running system, prefer uploading files individually through the Admin Dashboard instead.
 
-![Upload and Monitor](.assets/pio.upload-monitor.png)
+</details>
 
 ---
 
@@ -221,7 +244,7 @@ Declare handler functions and a `Router` class that registers them:
 
 namespace routes_example
 {
-    class Router : public ESP32WebServer::Router
+    class Router : public EspWeb::Router
     {
     public:
         Router()
@@ -233,10 +256,10 @@ namespace routes_example
         }
 
     private:
-        static void get_hello(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
-        static void get_status(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
-        static void get_example(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
-        static void post_data(ESP32WebServer::Request &req, ESP32WebServer::Response &res);
+        static void get_hello(EspWeb::Request &req, EspWeb::Response &res);
+        static void get_status(EspWeb::Request &req, EspWeb::Response &res);
+        static void get_example(EspWeb::Request &req, EspWeb::Response &res);
+        static void post_data(EspWeb::Request &req, EspWeb::Response &res);
     };
 }
 ```
@@ -250,12 +273,12 @@ In the `.cpp`, include the header and implement each function:
 
 namespace routes_example
 {
-    void Router::get_hello(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_hello(EspWeb::Request &req, EspWeb::Response &res)
     {
         res.text("Hello, World!").status(200);
     }
 
-    void Router::get_status(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_status(EspWeb::Request &req, EspWeb::Response &res)
     {
         JsonDocument status;
 
@@ -268,12 +291,12 @@ namespace routes_example
         res.json(status).status(200);
     }
 
-    void Router::get_example(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::get_example(EspWeb::Request &req, EspWeb::Response &res)
     {
         res.text("This is an example route!").status(200);
     }
 
-    void Router::post_data(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+    void Router::post_data(EspWeb::Request &req, EspWeb::Response &res)
     {
         JsonDocument response;
         response["message"] = "Data received successfully";
@@ -292,7 +315,7 @@ namespace routes_example
 
 void setup()
 {
-    ESP32WebServer::MiniServer *Server = new ESP32WebServer::MiniServer();
+    EspWeb::MiniServer *Server = new EspWeb::MiniServer();
 
     // Server->connectWiFi("YOUR_SSID", "YOUR_PASSWORD");
 
@@ -397,7 +420,7 @@ The request body is accessed via `req.body` and is read lazily — nothing is re
 ### JSON body
 
 ```cpp
-Server->post("/data", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+Server->post("/data", [](EspWeb::Request &req, EspWeb::Response &res) {
     JsonDocument body = req.body.json();
     const char* name = body["name"];
     res.text(name).OK();
@@ -407,7 +430,7 @@ Server->post("/data", [](ESP32WebServer::Request &req, ESP32WebServer::Response 
 ### Binary / streaming (e.g. OTA firmware)
 
 ```cpp
-Server->post("/ota", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+Server->post("/ota", [](EspWeb::Request &req, EspWeb::Response &res) {
     if (Update.begin(req.body.contentLength)) {
         uint8_t buf[1024];
         size_t n;
@@ -432,7 +455,7 @@ Server->post("/ota", [](ESP32WebServer::Request &req, ESP32WebServer::Response &
 Query parameters from the URL (e.g. `/search?term=hello&page=2`) are parsed automatically and stored in `req.query` as a `std::map<std::string, std::string>`.
 
 ```cpp
-Server->get("/search", [](ESP32WebServer::Request &req, ESP32WebServer::Response &res) {
+Server->get("/search", [](EspWeb::Request &req, EspWeb::Response &res) {
     if (req.query.find("term") == req.query.end()) {
         res.text("Missing parameter: term").status(400);
         return;
@@ -476,7 +499,7 @@ The server iterates through all handlers and stops as soon as `response.finalize
 A middleware handler has the same signature as a regular route handler:
 
 ```cpp
-void authMiddleware(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+void authMiddleware(EspWeb::Request &req, EspWeb::Response &res)
 {
     if (req.cookies.find("session") == req.cookies.end())
     {
@@ -487,7 +510,7 @@ void authMiddleware(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
     // No finalize() call → next handler in the chain runs
 }
 
-void get_secret(ESP32WebServer::Request &req, ESP32WebServer::Response &res)
+void get_secret(EspWeb::Request &req, EspWeb::Response &res)
 {
     res.text("Secret data!").status(200);
 }
@@ -505,7 +528,7 @@ route("POST", "/config", { authMiddleware, post_config });
 **Global / prefix-based** — register via `use()`. Runs before every route whose path starts with the given prefix. Useful for logging, CORS headers, or auth that spans multiple endpoints:
 
 ```cpp
-class Router : public ESP32WebServer::Router
+class Router : public EspWeb::Router
 {
 public:
     Router()
@@ -547,18 +570,6 @@ Request → use() handlers (in registration order, prefix-matched)
 | Auth (per-route) | `route()` chain | Fine-grained control per endpoint |
 | Rate limiting | `use("/")` | Track request counts, abort with `429` |
 
-#### CORS
-
-The server ships a built-in CORS handler. Register it once to add the appropriate headers to every response:
-
-```cpp
-// Allow all origins (default)
-Server->use(Server->cors());
-
-// Restrict to a specific origin
-Server->use(Server->cors("https://my-frontend.example.com"));
-```
-
 ➡️ See also: **📤 Response Handling** above for all available response methods.
 
 </details>
@@ -566,54 +577,86 @@ Server->use(Server->cors("https://my-frontend.example.com"));
 ---
 
 <details>
-<summary>🛜 Admin Dashboard</summary>
+<summary>🔒 Built-in Middleware</summary>
 
-The built-in Admin Dashboard is available at `/admin` on every device. In AP mode (no WiFi configured) connect to the `ESP32_MiniWebServer` hotspot and open `192.168.4.1/admin`.
+Both handlers are available on the server and directly inside any `Router` subclass — no server reference needed:
 
-![Admin Dashboard](.assets/admin.dashboard.overview.png)
-
-It provides:
-
-- **WiFi** — scan for nearby networks, select one, enter the password and save. Credentials persist across reboots. Multiple networks can be stored; the device always picks the strongest signal.
-- **Security** — change the admin username and password.
-- **API Tokens** — create and manage permanent API tokens for programmatic access.
-- **Restart** — reboot the device directly from the browser.
-
-![Admin Dashboard WiFi](.assets/admin.dashboard.wifi.png)
-
-#### Default credentials
-
-| Field | Default |
-|-------|---------|
-| Username | `admin` |
-| Password | `admin` |
-
-Override in code before calling `start()`:
+#### CORS
 
 ```cpp
-Server->defaultAdminCredentials("admin", "my-secure-password");
-Server->defaultAdminSalt("optional-salt");
+// On the server
+Server->use(Server->cors());
+Server->use(Server->cors("https://my-frontend.example.com"));
 
-// Disable the admin dashboard UI (keeps the /admin API routes)
-Server->disableAdminDashboard();
-
-// Disable the admin dashboard and all /admin routes entirely
-Server->disableAdmin();
+// Inside a Router subclass
+use("/", cors());
+use("/", cors("https://my-frontend.example.com"));
 ```
 
-#### Permanent API Tokens
+#### Auth
 
-Permanent tokens can be created from the **API Tokens** section of the admin dashboard. Unlike session tokens (which expire after 1 hour), permanent tokens persist across reboots and never expire.
+Protects routes using Permanent API Tokens created in the Admin Dashboard. Checks the `Authorization` header — no session or cookie required:
 
-Use them in API requests via the `Authorization` header:
+```cpp
+// On the server
+Server->use("/api", Server->auth());
 
-```http
-GET /admin/wifi/active HTTP/1.1
-Authorization: <your-token>
+// Inside a Router subclass
+use("/api", auth());
+route("GET", "/myApi", { auth(), get_myApi });
 ```
 
-Tokens are stored in `/admin_perm_token.json` on LittleFS.
+Requests without a valid `Authorization` token receive a `401 Unauthorized` response.
+
+#### Managing tokens from code
+
+Tokens can also be issued and revoked programmatically from within any Router. The tokens work with the same `auth()` handler:
+
+```cpp
+class Router : public EspWeb::Router
+{
+public:
+    Router()
+    {
+        use("/api", auth());
+
+        route("POST", "/api/login", post_login);
+        route("POST", "/api/logout", post_logout);
+        route("GET",  "/api/data",  get_data);
+    }
+
+private:
+    static void post_login(Request &req, Response &res)
+    {
+        // Issue a session token (expires after 1 hour)
+        std::string token = Router::getSessionToken();
+        res.header("Set-Cookie", "adminToken=" + token + "; path=/").OK();
+    }
+
+    static void post_logout(Request &req, Response &res)
+    {
+        res.header("Set-Cookie", "adminToken=; Max-Age=0; path=/").OK();
+    }
+
+    static void get_data(Request &req, Response &res)
+    {
+        // Only reachable with a valid token — auth() already checked
+        res.text("secret").OK();
+    }
+};
+```
+
+Permanent tokens (no expiry) can be managed the same way:
+
+```cpp
+// Create a named API token — returns the token string
+std::string token = Router::getApiToken("my-device");
+
+// Revoke it
+Router::removeApiToken("my-device");
+```
 
 </details>
 
 ---
+

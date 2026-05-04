@@ -4,7 +4,7 @@
 
 #include <router/response.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     void Response::send(int socket, Response &res)
@@ -100,13 +100,50 @@ namespace ESP32WebServer
         return *this;
     }
 
+    Response &Response::Created()
+    {
+        if (this->body.empty())
+            this->text("Created");
+        this->status_code = 201;
+        return *this;
+    }
+
+    Response &Response::BadRequest()
+    {
+        if (this->body.empty())
+            this->text("Bad Request");
+        this->status_code = 400;
+        return *this;
+    }
+
+    Response &Response::Unauthorized()
+    {
+        if (this->body.empty())
+            this->text("Unauthorized");
+        this->status_code = 401;
+        return *this;
+    }
+
+    Response &Response::Forbidden()
+    {
+        if (this->body.empty())
+            this->text("Forbidden");
+        this->status_code = 403;
+        return *this;
+    }
+
     Response &Response::InternalServerError()
     {
         if (this->body.empty())
-        {
             this->text("Internal Server Error");
-        }
         this->status_code = 500;
+        return *this;
+    }
+
+    Response &Response::Redirect(const std::string &location)
+    {
+        this->header("Location", location);
+        this->status_code = 302;
         return *this;
     }
 

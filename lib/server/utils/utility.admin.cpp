@@ -4,7 +4,7 @@
 
 #include <utils/utility.admin.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     static void restartTask(void *param)
@@ -12,235 +12,6 @@ namespace ESP32WebServer
         vTaskDelay(pdMS_TO_TICKS(500));
         ESP.restart();
         vTaskDelete(nullptr);
-    }
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * TokenManager
-     *
-     **/
-
-    bool TokenManager::setSalt(const std::string &salt)
-    {
-        JsonDocument doc = JsonDocument();
-
-        if (fileExists(ADMIN_CREDENTIALS_FILE))
-        {
-            doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
-        }
-
-        doc["admin_salt"] = salt;
-        writeJsonFile(ADMIN_CREDENTIALS_FILE, doc);
-
-        return true;
-    }
-    bool TokenManager::setCredentials(const std::string &username, const std::string &password)
-    {
-        JsonDocument doc = JsonDocument();
-
-        if (fileExists(ADMIN_CREDENTIALS_FILE))
-        {
-            doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
-        }
-
-        std::string salt = getCredentials()[0];
-
-        const std::string password_hash = generateSHA256(password, salt);
-
-        doc["admin_user"] = username;
-        doc["admin_pwd"] = password_hash;
-        writeJsonFile(ADMIN_CREDENTIALS_FILE, doc);
-
-        return true;
-    }
-
-    std::vector<std::string> TokenManager::getCredentials()
-    {
-        std::vector<std::string> creds;
-        const JsonDocument &doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
-
-        if (doc["admin_salt"].is<std::string>())
-        {
-            creds.push_back(doc["admin_salt"].as<std::string>());
-        }
-        else
-        {
-            // Randomly create a salt on startup
-            const std::string salt = randomString(32);
-            creds.push_back(salt);
-            setSalt(salt);
-        }
-
-        if (doc["admin_user"].is<std::string>())
-        {
-            creds.push_back(doc["admin_user"].as<std::string>());
-        }
-        else
-        {
-            creds.push_back(DEFAULT_ADMIN_USER);
-        }
-
-        if (doc["admin_pwd"].is<std::string>())
-        {
-            creds.push_back(doc["admin_pwd"].as<std::string>());
-        }
-        else
-        {
-            std::string admin_hash = generateSHA256(DEFAULT_ADMIN_PWD, creds[0]);
-            creds.push_back(admin_hash);
-        }
-
-        return creds;
-    }
-
-    bool TokenManager::checkCredentials(const std::string &username, const std::string &password)
-    {
-        const std::vector<std::string> &creds = getCredentials();
-
-        std::string admin_salt = creds[0];
-        std::string admin_user = creds[1];
-        std::string admin_pwd = creds[2];
-
-        const std::string hash = generateSHA256(password, admin_salt);
-
-        return username == admin_user && hash == admin_pwd;
-    }
-
-    std::string TokenManager::generateSHA256(const std::string &text, const std::string &salt)
-    {
-        mbedtls_sha256_context ctx;
-        mbedtls_sha256_init(&ctx);
-        mbedtls_sha256_starts(&ctx, 0);
-
-        mbedtls_sha256_update(&ctx, (unsigned char *)text.c_str(), text.length());
-        mbedtls_sha256_update(&ctx, (unsigned char *)salt.c_str(), salt.length());
-
-        unsigned char shaResult[32];
-
-        mbedtls_sha256_finish(&ctx, shaResult);
-        mbedtls_sha256_free(&ctx);
-
-        std::string hashStr;
-
-        for (int i = 0; i < 32; i++)
-        {
-            char buf[3];
-            snprintf(buf, sizeof(buf), "%02x", shaResult[i]);
-            hashStr += buf;
-        }
-
-        return hashStr;
-    }
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Handle tokens
-     *
-     **/
-
-    void TokenManager::addToken(const std::string &token)
-    {
-        const unsigned long expiry = (millis() / 1000) + 3600;
-        _ADMIN_TOKENS.insert({token, expiry});
-    }
-
-    void TokenManager::removeToken(const std::string &token)
-    {
-        const auto &entry = _ADMIN_TOKENS.find(token);
-        _ADMIN_TOKENS.erase(entry);
-    }
-
-    std::string TokenManager::getToken(const std::string &username)
-    {
-        const std::string &token = generateSHA256(randomString() + String(millis()).c_str(), username);
-        addToken(token);
-        return token;
-    }
-
-    bool TokenManager::checkToken(const std::string &authToken)
-    {
-        unsigned long currentTime = millis() / 1000;
-
-        const auto &entry = _ADMIN_TOKENS.find(authToken);
-        if (entry == _ADMIN_TOKENS.end())
-        {
-            return false;
-        }
-
-        if (currentTime > entry->second)
-        {
-            _ADMIN_TOKENS.erase(entry);
-            return false;
-        }
-
-        return true;
-    }
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Handle Permanent tokens
-     *
-     **/
-
-    std::string TokenManager::addPermToken(const std::string &name)
-    {
-        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
-
-        const std::string &token = generateSHA256(randomString() + String(millis()).c_str(), name);
-
-        doc[name] = token;
-
-        // Temp In-Memory to not always read from Flash.
-        _PERM_TOKENS.insert({token, name});
-
-        writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
-
-        return doc[name].as<std::string>();
-    }
-    void TokenManager::removePermToken(const std::string &name)
-    {
-        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
-
-        doc.remove(name);
-
-        _hasReadFile = false;
-        _PERM_TOKENS = {};
-
-        writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
-    }
-    bool TokenManager::checkPermToken(const std::string &authToken)
-    {
-        if (!_hasReadFile)
-        {
-            listPermTokens();
-        }
-
-        return _PERM_TOKENS.find(authToken) != _PERM_TOKENS.end();
-    }
-    std::vector<std::string> TokenManager::listPermTokens()
-    {
-
-        if (!_hasReadFile)
-        {
-            JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
-
-            for (JsonPair entry : doc.as<JsonObject>())
-            {
-                _PERM_TOKENS.insert(std::make_pair(
-                    entry.value().as<std::string>(),
-                    entry.key().c_str()));
-            }
-
-            _hasReadFile = true;
-        }
-
-        std::vector<std::string> result;
-        for (const auto &entry : _PERM_TOKENS)
-        {
-            result.push_back(entry.second);
-        }
-
-        return result;
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -344,14 +115,6 @@ namespace ESP32WebServer
                 postLogin();
                 return false;
             };
-
-            fetch('/admin/login', {
-                method: 'GET'
-            }).then(res => {
-                if (res.ok) {
-                    window.location.replace('/admin/dashboard');
-                }
-            });
         };
 
         async function postLogin() {
@@ -1182,61 +945,20 @@ namespace ESP32WebServer
      *
      **/
 
-    bool isTokenValid(Request &req, Response &res)
-    {
-        Serial.println("Checking authentication for admin route");
-
-        const auto &apiHeader = req.headers.find("Authorization");
-        if (apiHeader != req.headers.end())
-        {
-            if (TokenManager::instance().checkPermToken(apiHeader->second))
-                return true;
-        }
-
-        const auto &entry = req.cookies.find(DEFAULT_ADMIN_COOKIE);
-        if (entry == req.cookies.end())
-        {
-            Serial.println("No admin token found in cookies");
-            return false;
-        }
-
-        if (TokenManager::instance().checkToken(entry->second))
-            return true;
-
-        if (TokenManager::instance().checkPermToken(entry->second))
-            return true;
-
-        Serial.println("Invalid or expired admin token");
-        return false;
-    }
-
-    void verify_AdminAuth(Request &req, Response &res)
-    {
-        if (!isTokenValid(req, res))
-        {
-            res.status(401).text("Unauthorized: Invalid or expired token");
-        }
-        else
-        {
-            res.status(200).text("Authenticated");
-        }
-    }
-
     void auth_handler(Request &req, Response &res)
     {
+        // redirect to dashboard
+        if (req.path == "/admin" && TokenManager::instance().isSessionTokenValid(req))
+            res.Redirect("/admin/dashboard").finalize();
+
+        // Unprotected routes
         if (req.path == "/admin" || req.path == "/admin/login")
-        {
             return;
-        }
 
-        if (!isTokenValid(req, res))
-        {
-            res.header("Location", "/admin").status(302).text("Unauthorized: No token provided").finalize();
-            return;
-        }
-
-        if (req.method == "GET")
-            return;
+        if (!TokenManager::instance().isSessionTokenValid(req) && !TokenManager::instance().isPermTokenValid(req))
+            res.Redirect("/admin").finalize();
+        else
+            res.OK().text("Authenticated");
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -1264,7 +986,7 @@ namespace ESP32WebServer
         if (!body["username"].is<std::string>() || !body["password"].is<std::string>())
         {
             Serial.println("Missing username or password in login request");
-            res.status(400).text("Invalid username or password");
+            res.BadRequest().text("Invalid username or password");
             return;
         }
 
@@ -1273,12 +995,12 @@ namespace ESP32WebServer
 
         if (!TokenManager::instance().checkCredentials(username, password))
         {
-            res.status(401).text("Invalid username or password");
+            res.Unauthorized().text("Invalid username or password");
             return;
         }
 
         JsonDocument doc;
-        doc["token"] = TokenManager::instance().getToken(username);
+        doc["token"] = TokenManager::instance().getToken();
 
         res.json(doc);
     }
@@ -1287,7 +1009,7 @@ namespace ESP32WebServer
     {
         if (!req.body.json()["admin_user"].is<std::string>() || !req.body.json()["admin_pwd"].is<std::string>())
         {
-            res.status(400).text("Missing admin_user or admin_pwd");
+            res.BadRequest().text("Missing admin_user or admin_pwd");
             return;
         }
 
@@ -1334,14 +1056,14 @@ namespace ESP32WebServer
     {
         if (!req.body.json()["name"].is<std::string>())
         {
-            res.status(400).text("Missing name");
+            res.BadRequest().text("Missing name");
             return;
         }
 
         const std::string name = req.body.json()["name"].as<std::string>();
         if (name.empty())
         {
-            res.status(400).text("Name cannot be empty");
+            res.BadRequest().text("Name cannot be empty");
             return;
         }
 
@@ -1358,7 +1080,7 @@ namespace ESP32WebServer
     {
         if (!req.body.json()["name"].is<std::string>())
         {
-            res.status(400).text("Missing name");
+            res.BadRequest().text("Missing name");
             return;
         }
 
@@ -1376,7 +1098,7 @@ namespace ESP32WebServer
     void get_WiFiActive(Request &req, Response &res)
     {
         Serial.println("Fetching current WiFi configuration for admin dashboard");
-        ESP32WebServer::WiFiConfig wifiConfig = WiFiUtility::instance().getActiveWiFi();
+        EspWeb::WiFiConfig wifiConfig = WiFiUtility::instance().getActiveWiFi();
 
         JsonDocument doc;
         doc["SSID"] = wifiConfig.ssid;
@@ -1389,7 +1111,7 @@ namespace ESP32WebServer
 
     void get_WiFiScan(Request &req, Response &res)
     {
-        std::vector<ESP32WebServer::WiFiConfig> options = WiFiUtility::instance().scanNetworks();
+        std::vector<EspWeb::WiFiConfig> options = WiFiUtility::instance().scanNetworks();
 
         JsonDocument doc;
         JsonArray arr = doc["networks"].to<JsonArray>();
@@ -1406,7 +1128,7 @@ namespace ESP32WebServer
 
     void get_WiFiSavedNetworks(Request &req, Response &res)
     {
-        std::vector<ESP32WebServer::WiFiConfig> options = WiFiUtility::instance().getSavedNetworks();
+        std::vector<EspWeb::WiFiConfig> options = WiFiUtility::instance().getSavedNetworks();
 
         JsonDocument doc;
         JsonArray arr = doc["networks"].to<JsonArray>();
@@ -1425,7 +1147,7 @@ namespace ESP32WebServer
     {
         if (req.body.json().isNull() || !req.body.json()["ssid"].is<std::string>())
         {
-            res.status(400).text("Missing ssid");
+            res.BadRequest().text("Missing ssid");
             return;
         }
 
@@ -1438,7 +1160,7 @@ namespace ESP32WebServer
     {
         if (!req.body.json()["ssid"].is<std::string>() || !req.body.json()["password"].is<std::string>())
         {
-            res.status(400).text("Missing ssid or password");
+            res.BadRequest().text("Missing ssid or password");
             return;
         }
 

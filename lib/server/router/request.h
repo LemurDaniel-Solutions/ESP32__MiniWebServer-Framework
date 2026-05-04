@@ -13,7 +13,7 @@
 
 #include <utils/utility.file.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     const size_t BODY_SIZE_TRESHOLD = 8192;

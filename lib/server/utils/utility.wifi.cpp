@@ -4,7 +4,7 @@
 
 #include <utils/utility.wifi.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
     void WiFiUtility::wifiManagerTask(void *param)
     {

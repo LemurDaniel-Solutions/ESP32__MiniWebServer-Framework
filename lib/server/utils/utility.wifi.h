@@ -18,7 +18,7 @@
 #define WIFI_CONFIG_FILE "/WiFiConfig.json"
 #define DEFAULT_WIFI_SSID "ESP32_MiniWebServer"
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     struct WiFiConfig

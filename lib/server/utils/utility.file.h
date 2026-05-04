@@ -15,7 +15,7 @@
 #define FOLDER_TEMP "/tmp"
 #define FOLDER_WEB "/web"
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     struct FileInfo

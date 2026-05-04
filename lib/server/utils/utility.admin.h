@@ -4,80 +4,11 @@
 
 #pragma once
 
-#include <Arduino.h>
-#include <stdlib.h>
-#include "mbedtls/sha256.h"
-
-#include <vector>
-#include <string>
-#include <map>
-
 #include <router/router.h>
 #include <utils/utility.wifi.h>
 
-#define ADMIN_PERMANENT_TOKENS "/admin_perm_token.json"
-#define ADMIN_CREDENTIALS_FILE "/admin_credentials.json"
-#define DEFAULT_ADMIN_COOKIE "adminToken"
-#define DEFAULT_ADMIN_USER "admin"
-#define DEFAULT_ADMIN_PWD "admin"
-
-namespace ESP32WebServer
+namespace EspWeb
 {
-    class TokenManager
-    {
-    public:
-        static TokenManager &instance()
-        {
-            static TokenManager _instance;
-            return _instance;
-        }
-
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Handle credentials
-         *
-         **/
-
-        bool setSalt(const std::string &salt);
-        bool setCredentials(const std::string &username, const std::string &password);
-        std::vector<std::string> getCredentials();
-
-        bool checkCredentials(const std::string &username, const std::string &password);
-        std::string generateSHA256(const std::string &text, const std::string &salt);
-
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Handle session tokens
-         *
-         **/
-
-        void addToken(const std::string &token);
-        void removeToken(const std::string &token);
-        std::string getToken(const std::string &username);
-        bool checkToken(const std::string &authToken);
-
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Handle permanent tokens
-         *
-         **/
-
-        std::string addPermToken(const std::string &name);
-        void removePermToken(const std::string &name);
-        bool checkPermToken(const std::string &authToken);
-        std::vector<std::string> listPermTokens();
-
-    private:
-        TokenManager() {}
-
-        TokenManager(const TokenManager &) = delete;
-        void operator=(const TokenManager &) = delete;
-
-        std::map<std::string, unsigned long> _ADMIN_TOKENS;
-        std::map<std::string, std::string> _PERM_TOKENS;
-        int _hasReadFile = false;
-    };
-
     void get_AdminLogin(Request &req, Response &res);
     void get_AdminDashboard(Request &req, Response &res);
 
@@ -87,8 +18,6 @@ namespace ESP32WebServer
      *
      **/
 
-    bool isTokenValid(Request &req, Response &res);
-    void verify_AdminAuth(Request &req, Response &res);
     void auth_handler(Request &req, Response &res);
 
     /*-------------------------------------------------------------------------------------------------
@@ -124,7 +53,7 @@ namespace ESP32WebServer
     void delete_WiFiSavedNetwork(Request &req, Response &res);
     void post_WiFiSavedNetwork(Request &req, Response &res);
 
-    class AdminRouter : public ESP32WebServer::Router
+    class AdminRouter : public EspWeb::Router
     {
     public:
         AdminRouter(int enableDashboard)
@@ -140,7 +69,6 @@ namespace ESP32WebServer
 
             // Unprotected Routes
             route("GET", "/admin/logout", get_AdminLogout);
-            route("GET", "/admin/login", verify_AdminAuth);
             route("POST", "/admin/login", post_AdminLogin);
 
             // Return 401 if the token is not valid or missing for any /admin/* route

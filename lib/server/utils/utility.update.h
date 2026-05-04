@@ -15,13 +15,13 @@
 #include <utils/utility.admin.h>
 #include <utils/utility.file.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
     void post_UploadFile(Request &req, Response &res);
     void post_UpdateCode(Request &req, Response &res);
     void get_ClearWebsite(Request &req, Response &res);
 
-    class UpdateRouter : public ESP32WebServer::Router
+    class UpdateRouter : public EspWeb::Router
     {
     public:
         UpdateRouter()

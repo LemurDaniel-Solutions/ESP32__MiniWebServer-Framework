@@ -4,7 +4,7 @@
 
 #include <utils/utility.update.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     void get_ClearWebsite(Request &req, Response &res)
@@ -18,7 +18,7 @@ namespace ESP32WebServer
         const std::string &path = req.query["path"];
         if (path.empty())
         {
-            res.status(400).text("Missing or invalid path query parameter");
+            res.BadRequest().text("Missing or invalid path query parameter");
             return;
         }
 

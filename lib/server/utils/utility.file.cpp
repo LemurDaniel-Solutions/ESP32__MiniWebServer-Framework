@@ -4,7 +4,7 @@
 
 #include <utils/utility.file.h>
 
-namespace ESP32WebServer
+namespace EspWeb
 {
 
     std::string getTempFolder()
