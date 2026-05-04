@@ -78,27 +78,22 @@ namespace ESP32WebServer
 
     std::vector<WiFiConfig> WiFiUtility::getNearestNetworks()
     {
-        const std::vector<WiFiConfig> &scannedNetworks = scanNetworks();
-        std::map<std::string, WiFiConfig> savedNetworks;
+        const std::vector<WiFiConfig> scannedNetworks = scanNetworks();
+        const std::vector<WiFiConfig> savedNetworks = getSavedNetworks();
         std::vector<WiFiConfig> nearbyNetworks;
-
-        for (const WiFiConfig &saved : getSavedNetworks())
-        {
-            savedNetworks.insert({saved.ssid, saved});
-        }
 
         for (const WiFiConfig &scanned : scannedNetworks)
         {
-            const auto &entry = savedNetworks.find(scanned.ssid);
-            if (entry == savedNetworks.end())
+            for (const WiFiConfig &saved : savedNetworks)
             {
-                continue;
-            }
+                if (scanned.ssid != saved.ssid)
+                    continue;
 
-            WiFiConfig match = entry->second;
-            match.signalStrength = scanned.signalStrength;
-            nearbyNetworks.push_back(match);
-            break;
+                WiFiConfig match = saved;
+                match.signalStrength = scanned.signalStrength;
+                nearbyNetworks.push_back(match);
+                break;
+            }
         }
 
         std::sort(nearbyNetworks.begin(), nearbyNetworks.end(), [](const WiFiConfig &a, const WiFiConfig &b)
@@ -232,7 +227,7 @@ namespace ESP32WebServer
         }
 
         WiFi.mode(WIFI_AP);
-        WiFi.softAP(_DEFAULT_WIFI_SSID.c_str());
+        WiFi.softAP(DEFAULT_WIFI_SSID);
         Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
     }
 

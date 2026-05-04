@@ -18,7 +18,7 @@
   "platforms": "espressif32",
   "dependencies": {
     "bblanchon/ArduinoJson": "~7.4.3",
-    "tobozo/ESP32-targz": "^1.0.19"
+    "kuba--/zip": "*"
   },
   "build": {
     "srcDir": "lib/server"

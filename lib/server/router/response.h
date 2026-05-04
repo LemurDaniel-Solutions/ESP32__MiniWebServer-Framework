@@ -28,8 +28,7 @@ namespace ESP32WebServer
         size_t fileSize;
         std::string filePath;
 
-        std::string responseMode = "body"; // "body" or "file"
-        // Default content type is text/plain, but can be set to application/json or others as needed
+        bool isFileMode = false;
         std::string body;
 
     private:

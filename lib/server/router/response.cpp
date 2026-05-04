@@ -17,7 +17,7 @@ namespace ESP32WebServer
         std::string header = getHeaders();
         write(socket, header.c_str(), header.size());
 
-        if (responseMode != "file")
+        if (!isFileMode)
         {
             write(socket, body.c_str(), body.size());
             return;
@@ -55,14 +55,7 @@ namespace ESP32WebServer
 
     std::string Response::getHeaders()
     {
-        if (responseMode == "file")
-        {
-            this->header("Content-Length", std::to_string(fileSize));
-        }
-        else
-        {
-            this->header("Content-Length", std::to_string(body.size()));
-        }
+        this->header("Content-Length", std::to_string(isFileMode ? fileSize : body.size()));
 
         std::string header;
         header.reserve(512);
@@ -153,7 +146,7 @@ namespace ESP32WebServer
         this->header("Content-Type", "application/octet-stream");
         this->fileSize = file.size();
         this->filePath = path;
-        this->responseMode = "file";
+        this->isFileMode = true;
 
         Serial.printf("✅ File '%s' is ready to be served (size: %d bytes)\n", path.c_str(), this->fileSize);
 
@@ -164,7 +157,7 @@ namespace ESP32WebServer
     Response &Response::text(const std::string &text)
     {
         this->body = text;
-        this->responseMode = "body";
+        this->isFileMode = false;
         this->header("Content-Type", "text/plain");
         return *this;
     }
@@ -175,7 +168,7 @@ namespace ESP32WebServer
         serializeJson(bodyJson, jsonStr);
 
         this->body = jsonStr;
-        this->responseMode = "body";
+        this->isFileMode = false;
         this->header("Content-Type", "application/json");
         return *this;
     }

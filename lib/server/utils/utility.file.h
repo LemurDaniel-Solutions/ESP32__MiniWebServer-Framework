@@ -8,7 +8,7 @@
 #include <LittleFS.h>
 
 #include <ArduinoJson.h>
-#include <ESP32-targz.h>
+#include <zip.h>
 
 #include <string>
 #include <vector>

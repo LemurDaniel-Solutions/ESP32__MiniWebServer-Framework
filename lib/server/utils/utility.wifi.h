@@ -12,11 +12,11 @@
 #include <algorithm>
 #include <vector>
 #include <string>
-#include <map>
 
 #include <utils/utility.file.h>
 
 #define WIFI_CONFIG_FILE "/WiFiConfig.json"
+#define DEFAULT_WIFI_SSID "ESP32_MiniWebServer"
 
 namespace ESP32WebServer
 {
@@ -34,7 +34,6 @@ namespace ESP32WebServer
     private:
         WiFiUtility() = default;
 
-        const std::string _DEFAULT_WIFI_SSID = "ESP32_MiniWebServer";
         const int _WIFI_TIMEOUT_SEC = 30;
 
     public:

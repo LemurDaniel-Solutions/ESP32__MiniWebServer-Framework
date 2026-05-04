@@ -113,49 +113,73 @@ namespace ESP32WebServer
 
     void unzip(const std::string &filePath, const std::string &targetFolder)
     {
+        File zipFile = LittleFS.open(filePath.c_str(), "r");
+        if (!zipFile)
+        {
+            Serial.printf("Failed to open zip: %s\n", filePath.c_str());
+            return;
+        }
+
+        size_t fileSize = zipFile.size();
+        char *buffer = (char *)malloc(fileSize);
+        if (!buffer)
+        {
+            Serial.println("Not enough heap for zip extraction");
+            zipFile.close();
+            return;
+        }
+
+        zipFile.read((uint8_t *)buffer, fileSize);
+        zipFile.close();
+
+        struct zip_t *zip = zip_stream_open(buffer, fileSize, 0, 'r');
+        if (!zip)
+        {
+            Serial.println("Failed to open zip stream");
+            free(buffer);
+            return;
+        }
+
         LittleFS.mkdir(targetFolder.c_str());
 
-        const FileInfo &info = getFileInfo(filePath);
-
-        Serial.printf("Extension is %s", info.extension.c_str());
-        if (info.extension == ".tar")
+        int n = zip_entries_total(zip);
+        for (int i = 0; i < n; i++)
         {
-            TarUnpacker *TARUnpacker = new TarUnpacker();
+            if (zip_entry_openbyindex(zip, i) < 0)
+                continue;
 
-            TARUnpacker->haltOnError(false);
-            TARUnpacker->setTarVerify(false);
-            TARUnpacker->setupFSCallbacks([]()
-                                          { return (unsigned long long)LittleFS.totalBytes(); }, []()
-                                          { return (unsigned long long)LittleFS.totalBytes() - LittleFS.usedBytes(); });
-            TARUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);
-            TARUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback);
-            TARUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);
+            std::string destPath = targetFolder + "/" + zip_entry_name(zip);
 
-            if (!TARUnpacker->tarExpander(LittleFS, filePath.c_str(), LittleFS, targetFolder.c_str()))
+            if (zip_entry_isdir(zip))
             {
-                Serial.printf("tarExpander failed with return code #%d\n", TARUnpacker->tarGzGetError());
+                LittleFS.mkdir(destPath.c_str());
+                zip_entry_close(zip);
+                continue;
             }
-        }
-        else if (info.extension == ".tar.gz")
-        {
-            TarGzUnpacker *TARGZUnpacker = new TarGzUnpacker();
 
-            TARGZUnpacker->haltOnError(false);
-            TARGZUnpacker->setTarVerify(false);
-            TARGZUnpacker->setupFSCallbacks([]()
-                                            { return (unsigned long long)LittleFS.totalBytes(); }, []()
-                                            { return (unsigned long long)LittleFS.totalBytes() - LittleFS.usedBytes(); });
-            TARGZUnpacker->setGzProgressCallback(BaseUnpacker::defaultProgressCallback);                 // targzNullProgressCallback or defaultProgressCallback
-            TARGZUnpacker->setLoggerCallback(BaseUnpacker::targzPrintLoggerCallback);                    // gz log verbosity
-            TARGZUnpacker->setTarProgressCallback(BaseUnpacker::defaultProgressCallback);                // prints the untarring progress for each individual file
-            TARGZUnpacker->setTarStatusProgressCallback(BaseUnpacker::defaultTarStatusProgressCallback); // print the filenames as they're expanded
-            TARGZUnpacker->setTarMessageCallback(BaseUnpacker::targzPrintLoggerCallback);                // tar log verbosity
+            size_t slash = destPath.find_last_of('/');
+            if (slash != std::string::npos)
+                LittleFS.mkdir(destPath.substr(0, slash).c_str());
 
-            if (!TARGZUnpacker->tarGzExpander(LittleFS, filePath.c_str(), LittleFS, targetFolder.c_str(), nullptr))
+            void *entryData = nullptr;
+            size_t entrySize = 0;
+            if (zip_entry_read(zip, &entryData, &entrySize) >= 0 && entryData)
             {
-                Serial.printf("tarGzExpander+intermediate file failed with return code #%d\n", TARGZUnpacker->tarGzGetError());
+                File out = LittleFS.open(destPath.c_str(), "w", true);
+                if (out)
+                {
+                    out.write((uint8_t *)entryData, entrySize);
+                    out.close();
+                    Serial.printf("Extracted: %s\n", destPath.c_str());
+                }
+                free(entryData);
             }
+
+            zip_entry_close(zip);
         }
+
+        zip_stream_close(zip);
+        free(buffer);
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -171,7 +195,8 @@ namespace ESP32WebServer
         File folder = LittleFS.open(folderPath.c_str());
         if (!folder || !folder.isDirectory())
         {
-            throw std::runtime_error("Path is not a directory");
+            Serial.printf("Not a directory: %s\n", folderPath.c_str());
+            return files;
         }
 
         std::string filePath = folder.getNextFileName().c_str();

@@ -10,7 +10,7 @@ namespace ESP32WebServer
     void post_UpdateWebsite(Request &req, Response &res)
     {
 
-        const std::string &filePath = req.body.file("web.tar.gz");
+        const std::string &filePath = req.body.file("web.zip");
         Serial.print("File located at: ");
         Serial.println(filePath.c_str());
 
