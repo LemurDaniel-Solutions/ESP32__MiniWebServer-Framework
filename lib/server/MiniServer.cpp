@@ -46,6 +46,12 @@ namespace EspWeb
         TokenManager::instance().setCredentials(username, password);
     }
 
+    void MiniServer::setTokenActions(const std::vector<std::string> actions)
+    {
+        TOKEN_ACTIONS = actions;
+        TOKEN_ACTIONS.insert(TOKEN_ACTIONS.begin(), "admin");
+    }
+
     void MiniServer::disableAdmin()
     {
         _is_admin_enabled = false;

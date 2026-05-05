@@ -948,15 +948,14 @@ namespace EspWeb
     void auth_handler(Request &req, Response &res)
     {
         // redirect to dashboard
-        if (req.path == "/admin" && req.isSessionTokenValid())
+        if (req.path == "/admin" && req.token.isAllowed("admin"))
             res.Redirect("/admin/dashboard").finalize();
 
         // Unprotected routes
         if (req.path == "/admin" || req.path == "/admin/login")
             return;
 
-        // Only allow session token for admin actions
-        if (!req.isSessionTokenValid())
+        if (! req.token.isAllowed("admin"))
             res.Redirect("/admin").finalize();
         else
             res.OK().text("Authenticated");
@@ -1001,7 +1000,7 @@ namespace EspWeb
         }
 
         JsonDocument doc;
-        doc["token"] = TokenManager::instance().getToken();
+        doc["token"] = TokenManager::instance().getSessionToken(3600, { "admin" }).value;
 
         res.json(doc);
     }
@@ -1036,14 +1035,24 @@ namespace EspWeb
 
     void get_PermTokens(Request &req, Response &res)
     {
-        const std::vector<std::string> tokens = TokenManager::instance().listPermTokens();
+        const std::vector<Token> tokens = TokenManager::instance().listApiTokens();
 
         JsonDocument doc;
         JsonArray arr = doc["tokens"].to<JsonArray>();
-        for (const std::string &name : tokens)
+        for (const Token &token : tokens)
         {
-            arr.add(name);
+            arr.add(token.name);
         }
+
+        res.OK().json(doc);
+    }
+
+    void get_TokenActions(Request &req, Response &res)
+    {
+        JsonDocument doc;
+        JsonArray arr = doc["actions"].to<JsonArray>();
+        for (const std::string &action : TOKEN_ACTIONS)
+            arr.add(action);
 
         res.OK().json(doc);
     }
@@ -1063,11 +1072,11 @@ namespace EspWeb
             return;
         }
 
-        const std::string token = TokenManager::instance().addPermToken(name);
+        const Token &token = TokenManager::instance().getApiToken(name, { "admin" });
 
         JsonDocument doc;
-        doc["name"] = name;
-        doc["token"] = token;
+        doc["name"] = token.name;
+        doc["token"] = token.value;
 
         res.OK().json(doc);
     }
@@ -1081,7 +1090,7 @@ namespace EspWeb
         }
 
         const std::string name = req.body.json()["name"].as<std::string>();
-        TokenManager::instance().removePermToken(name);
+        TokenManager::instance().removeApiToken(name);
         res.OK().text("Token deleted");
     }
 

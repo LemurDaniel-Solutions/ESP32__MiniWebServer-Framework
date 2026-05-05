@@ -38,6 +38,7 @@ namespace EspWeb
      **/
 
     void get_PermTokens(Request &req, Response &res);
+    void get_TokenActions(Request &req, Response &res);
     void post_PermToken(Request &req, Response &res);
     void delete_PermToken(Request &req, Response &res);
 
@@ -90,6 +91,7 @@ namespace EspWeb
 
             // Permanent API Tokens
             route("GET", "/admin/tokens", get_PermTokens);
+            route("GET", "/admin/token/actions", get_TokenActions);
             route("POST", "/admin/token", post_PermToken);
             route("DELETE", "/admin/token", delete_PermToken);
         }

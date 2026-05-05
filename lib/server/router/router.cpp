@@ -58,7 +58,7 @@ namespace EspWeb
     {
         return [](Request &req, Response &res)
         {
-            if (!req.isApiTokenValid() && !req.isSessionTokenValid())
+            if (!req.token.isValid())
                 res.Unauthorized().finalize();
         };
     }
@@ -69,18 +69,19 @@ namespace EspWeb
      *
      **/
 
-    std::string Router::getSessionToken()
+    std::string Router::getSessionToken(long seconds, const std::vector<std::string> &actions)
     {
-        return TokenManager::instance().getToken();
+        return TokenManager::instance().getSessionToken(seconds, actions).value;
     }
 
-    std::string Router::getApiToken(const std::string &name)
+    std::string Router::getApiToken(const std::string &name, const std::vector<std::string> &actions)
     {
-        return TokenManager::instance().addPermToken(name);
+        return TokenManager::instance().getApiToken(name, actions).value;
     }
+
     void Router::removeApiToken(const std::string &name)
     {
-        TokenManager::instance().removePermToken(name);
+        TokenManager::instance().removeApiToken(name);
     }
 
 }

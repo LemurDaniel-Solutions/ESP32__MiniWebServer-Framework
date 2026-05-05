@@ -122,6 +122,8 @@ namespace EspWeb
         int rejected = false;
         std::string error;
 
+        Token token;
+
         std::string method;
         std::string path;
         std::map<std::string, std::string> headers;
@@ -131,14 +133,5 @@ namespace EspWeb
         RequestBody body;
 
         static Request parse(int clientSocket);
-
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Authentication check
-         *
-         **/
-
-        bool isApiTokenValid();
-        bool isSessionTokenValid();
     };
 }

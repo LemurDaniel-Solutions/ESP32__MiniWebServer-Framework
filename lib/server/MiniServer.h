@@ -84,6 +84,8 @@ namespace EspWeb
         void defaultAdminSalt(const std::string &salt);
         void defaultAdminCredentials(const std::string &username, const std::string &password);
 
+        void setTokenActions(const std::vector<std::string> actions);
+
     private:
         std::string _dnsName;
         struct sockaddr_in _address;

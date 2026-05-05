@@ -6,6 +6,57 @@
 
 namespace EspWeb
 {
+    std::vector<std::string> TOKEN_ACTIONS = {"admin"};
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Token
+     *
+     **/
+
+    Token::Token(std::string name, std::string value, std::vector<std::string> action)
+    {
+        this->name = name;
+        this->value = value;
+        this->action = action;
+    }
+
+    Token Token::NullToken()
+    {
+        Token token("", "", {});
+        token._isValid = false;
+        return token;
+    }
+
+    Token Token::getSessionToken(long durationSeconds, const std::vector<std::string> &action)
+    {
+        std::string value = TokenManager::instance().generateSHA256(randomString());
+        Token token("Session Token", value, action);
+        token._expires = ::millis() / 1000 + durationSeconds;
+        return token;
+    }
+
+    Token Token::getApiToken(const std::string &name, const std::vector<std::string> &action)
+    {
+        std::string value = TokenManager::instance().generateSHA256(randomString());
+        return Token(name, value, action);
+    }
+
+    const long Token::expires() { return _expires; }
+    bool Token::isPrivileged() { return isAllowed("admin"); }
+    bool Token::isValid() { return _isValid; }
+
+    bool Token::isAllowed(const std::string &action)
+    {
+        if (!_isValid)
+            return false;
+
+        for (const std::string &entry : this->action)
+            if (entry == action)
+                return true;
+
+        return false;
+    }
+
     /*-------------------------------------------------------------------------------------------------
      *
      * Handle config file
@@ -106,28 +157,47 @@ namespace EspWeb
 
     void TokenManager::removeToken(const std::string &token)
     {
-        _ADMIN_TOKENS.erase(_ADMIN_TOKENS.find(token));
+        auto it = _SESSION_TOKENS.find(token);
+        if (it != _SESSION_TOKENS.end())
+            _SESSION_TOKENS.erase(it);
     }
 
-    std::string TokenManager::getToken()
+    Token TokenManager::getSessionToken(long seconds, const std::vector<std::string> &actions)
     {
-        const std::string &token = generateSHA256(randomString());
-        _ADMIN_TOKENS.insert({token, (millis() / 1000) + 3600});
+        Token token = Token::getSessionToken(seconds, actions);
+        _SESSION_TOKENS.insert({token.value, token});
         return token;
     }
 
-    bool TokenManager::checkToken(const std::string &authToken)
+    Token TokenManager::checkToken(const std::string &authToken)
     {
-        unsigned long currentTime = millis() / 1000;
-        const auto &entry = _ADMIN_TOKENS.find(authToken);
-        if (entry == _ADMIN_TOKENS.end())
-            return false;
-        if (currentTime > entry->second)
+
+        // Session Token check
+        long currentTime = millis() / 1000;
+        auto entry = _SESSION_TOKENS.find(authToken);
+        if (entry != _SESSION_TOKENS.end())
         {
-            _ADMIN_TOKENS.erase(entry);
-            return false;
+            if (currentTime > entry->second.expires())
+            {
+                _SESSION_TOKENS.erase(entry);
+            }
+            else
+            {
+                return entry->second;
+            }
         }
-        return true;
+
+        // API Token Check
+        if (_API_TOKENS == nullptr)
+            listApiTokens();
+
+        entry = _API_TOKENS->find(authToken);
+        if (entry != _API_TOKENS->end())
+        {
+            return entry->second;
+        }
+
+        return Token::NullToken();
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -135,48 +205,59 @@ namespace EspWeb
      * API Tokens
      *
      **/
-    std::string TokenManager::addPermToken(const std::string &name)
+    Token TokenManager::getApiToken(const std::string &name, const std::vector<std::string> &action)
     {
+        const Token &token = Token::getApiToken(name, action);
+
         JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
-        const std::string &token = generateSHA256(randomString());
 
-        if (_PERM_TOKENS == nullptr)
-            listPermTokens();
+        JsonObject tokenObj = doc[name].to<JsonObject>();
+        tokenObj["value"] = token.value;
+        JsonArray actionArr = tokenObj["action"].to<JsonArray>();
+        for (const std::string &entry : token.action)
+            actionArr.add(entry);
 
-        doc[name] = token;
-        (*_PERM_TOKENS).insert({token, name});
         writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
 
-        return doc[name].as<std::string>();
+        delete _API_TOKENS;
+        _API_TOKENS = nullptr;
+        listApiTokens();
+
+        return token;
     }
 
-    void TokenManager::removePermToken(const std::string &name)
+    void TokenManager::removeApiToken(const std::string &name)
     {
         JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
         doc.remove(name);
-        _PERM_TOKENS = nullptr;
+        delete _API_TOKENS;
+        _API_TOKENS = nullptr;
         writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
     }
 
-    bool TokenManager::checkPermToken(const std::string &authToken)
+    std::vector<Token> TokenManager::listApiTokens()
     {
-        if (_PERM_TOKENS == nullptr)
-            listPermTokens();
-        return (*_PERM_TOKENS).find(authToken) != (*_PERM_TOKENS).end();
-    }
-
-    std::vector<std::string> TokenManager::listPermTokens()
-    {
-        if (_PERM_TOKENS == nullptr)
+        if (_API_TOKENS == nullptr)
         {
-            _PERM_TOKENS = new std::map<std::string, std::string>();
+            _API_TOKENS = new std::map<std::string, Token>();
             JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
-            for (JsonPair entry : doc.as<JsonObject>())
-                (*_PERM_TOKENS).insert({entry.value().as<std::string>(), entry.key().c_str()});
+            for (JsonPair kv : doc.as<JsonObject>())
+            {
+                std::vector<std::string> actions;
+                for (JsonVariant v : kv.value()["action"].as<JsonArray>())
+                    actions.push_back(v.as<std::string>());
+
+                Token token(
+                    kv.key().c_str(),
+                    kv.value()["value"].as<std::string>(),
+                    actions);
+
+                (*_API_TOKENS).insert({token.value, token});
+            }
         }
 
-        std::vector<std::string> result;
-        for (const auto &entry : (*_PERM_TOKENS))
+        std::vector<Token> result;
+        for (const auto &entry : (*_API_TOKENS))
             result.push_back(entry.second);
 
         return result;

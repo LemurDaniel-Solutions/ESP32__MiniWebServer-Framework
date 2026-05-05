@@ -54,9 +54,9 @@ namespace EspWeb
          *
          **/
 
-        static std::string getSessionToken();
+        static std::string getSessionToken(long seconds, const std::vector<std::string> &actions = TOKEN_ACTIONS);
 
-        static std::string getApiToken(const std::string &name);
+        static std::string getApiToken(const std::string &name, const std::vector<std::string> &actions = TOKEN_ACTIONS);
         static void removeApiToken(const std::string &name);
 
         static bool isApiTokenValid(Request &req);

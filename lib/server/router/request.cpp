@@ -206,6 +206,15 @@ namespace EspWeb
             }
         }
 
+        const auto &cookie = request.cookies.find(DEFAULT_ADMIN_COOKIE);
+        const auto &header = request.headers.find("Authorization");
+        if (header != request.headers.end())
+            request.token = TokenManager::instance().checkToken(header->second);
+        else if (cookie != request.cookies.end())
+        {
+            request.token = TokenManager::instance().checkToken(cookie->second);
+        }
+
         if (request.headers.find("Content-Type") != request.headers.end())
         {
             request.body.contentType = request.headers["Content-Type"];
@@ -218,28 +227,4 @@ namespace EspWeb
 
         return request;
     }
-
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Authentication check
-     *
-     **/
-
-    bool Request::isApiTokenValid()
-    {
-        const auto &header = headers.find("Authorization");
-        if (header == headers.end())
-            return false;
-        return TokenManager::instance().checkPermToken(header->second);
-    }
-
-    bool Request::isSessionTokenValid()
-    {
-        const auto &entry = cookies.find(DEFAULT_ADMIN_COOKIE);
-        if (entry == cookies.end())
-            return false;
-        return TokenManager::instance().checkToken(entry->second);
-    }
-
 }

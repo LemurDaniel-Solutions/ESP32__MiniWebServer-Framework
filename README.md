@@ -636,8 +636,9 @@ public:
 private:
     static void post_login(Request &req, Response &res)
     {
-        // Issue a session token (expires after 1 hour)
-        std::string token = Router::getSessionToken();
+        // Issue a session token — expires after 3600 seconds
+        // Second argument is the list of allowed actions
+        std::string token = Router::getSessionToken(3600, { "admin", "sensors" });
         res.header("Set-Cookie", "adminToken=" + token + "; path=/").OK();
     }
 
@@ -657,12 +658,50 @@ private:
 Permanent tokens (no expiry) can be managed the same way:
 
 ```cpp
-// Create a named API token — returns the token string
-std::string token = Router::getApiToken("my-device");
+// Create a named permanent API token with specific actions
+std::string token = Router::getApiToken("my-device", { "admin", "sensors" });
 
 // Revoke it
 Router::removeApiToken("my-device");
 ```
+
+#### Token actions
+
+Every token carries a list of **actions** — strings that describe what the token is allowed to do. The default list is `{ "admin" }`.
+
+Define your own actions globally before calling `start()`:
+
+```cpp
+Server->setTokenActions({ "sensors", "control", "status" });
+// "admin" is always prepended automatically
+```
+
+Inside a handler, check the token on the incoming request:
+
+```cpp
+void get_data(EspWeb::Request &req, EspWeb::Response &res)
+{
+    if (!req.token.isValid())
+    {
+        res.Unauthorized();
+        return;
+    }
+
+    if (!req.token.isAllowed("sensors"))
+    {
+        res.Forbidden();
+        return;
+    }
+
+    res.text("sensor data").OK();
+}
+```
+
+| Method | Description |
+|--------|-------------|
+| `req.token.isValid()` | `false` if no token was sent or the token is expired / unknown |
+| `req.token.isAllowed("action")` | `true` if the token's action list contains the given string |
+| `req.token.isPrivileged()` | Shorthand for `isAllowed("admin")` |
 
 </details>
 

@@ -7,6 +7,7 @@
 #include <ArduinoJson.h>
 #include <mbedtls/sha256.h>
 
+#include <vector>
 #include <string>
 #include <map>
 
@@ -21,6 +22,33 @@
 
 namespace EspWeb
 {
+    extern std::vector<std::string> TOKEN_ACTIONS;
+
+    class Token
+    {
+    private:
+        bool _isValid = true;
+        long _expires = -1;
+
+    public:
+        static Token NullToken();
+
+        Token() = default;
+        Token(std::string name, std::string value, std::vector<std::string> action = {});
+
+        static Token getSessionToken(long seconds, const std::vector<std::string> &action);
+        static Token getApiToken(const std::string &name, const std::vector<std::string> &action);
+
+        std::vector<std::string> action;
+        std::string value;
+        std::string name;
+
+        const long expires();
+        bool isPrivileged();
+        bool isValid();
+        bool isAllowed(const std::string &action);
+    };
+
     class TokenManager
     {
     private:
@@ -35,10 +63,8 @@ namespace EspWeb
         std::string getValue(const std::string &key);
         void setValue(const std::string &key, const std::string &value);
 
-        std::string generateSHA256(const std::string &text);
-
-        std::map<std::string, unsigned long> _ADMIN_TOKENS;
-        std::map<std::string, std::string> *_PERM_TOKENS = nullptr;
+        std::map<std::string, Token> _SESSION_TOKENS;
+        std::map<std::string, Token> *_API_TOKENS = nullptr;
 
         TokenManager() {}
         TokenManager(const TokenManager &) = delete;
@@ -51,6 +77,8 @@ namespace EspWeb
             return _instance;
         }
 
+        std::string generateSHA256(const std::string &text);
+
         /*-------------------------------------------------------------------------------------------------
          *
          * Set / Get Credentials
@@ -61,7 +89,8 @@ namespace EspWeb
         void setCredentials(const std::string &username, const std::string &password);
 
         bool checkCredentials(const std::string &username, const std::string &password);
-        std::string generateSHA256(const std::string &text, const std::string &salt);
+
+        Token checkToken(const std::string &authToken);
 
         /*-------------------------------------------------------------------------------------------------
          *
@@ -69,9 +98,8 @@ namespace EspWeb
          *
          **/
 
-        std::string getToken();
+        Token getSessionToken(long seconds, const std::vector<std::string> &actions);
         void removeToken(const std::string &token);
-        bool checkToken(const std::string &authToken);
 
         /*-------------------------------------------------------------------------------------------------
          *
@@ -79,9 +107,8 @@ namespace EspWeb
          *
          **/
 
-        std::string addPermToken(const std::string &name);
-        void removePermToken(const std::string &name);
-        bool checkPermToken(const std::string &authToken);
-        std::vector<std::string> listPermTokens();
+        Token getApiToken(const std::string &name, const std::vector<std::string> &action);
+        void removeApiToken(const std::string &name);
+        std::vector<Token> listApiTokens();
     };
 }
