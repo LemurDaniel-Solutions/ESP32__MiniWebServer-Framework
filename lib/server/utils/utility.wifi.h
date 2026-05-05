@@ -15,7 +15,7 @@
 
 #include <utils/utility.file.h>
 
-#define WIFI_CONFIG_FILE "/WiFiconfig.json"
+#define WIFI_CONFIG_FILE "/WiFiConfig.json "
 #define DEFAULT_WIFI_SSID "ESP32_MiniWebServer"
 
 namespace EspWeb
