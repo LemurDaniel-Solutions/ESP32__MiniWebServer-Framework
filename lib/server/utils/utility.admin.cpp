@@ -509,13 +509,6 @@ namespace EspWeb
             justify-content: center;
         }
 
-        .add-token-form {
-            margin-top: 15px;
-            border-top: 1px solid #eee;
-            padding-top: 15px;
-            display: none;
-        }
-
         .token-value {
             background: #f4f6f8;
             border-radius: 6px;
@@ -620,20 +613,8 @@ namespace EspWeb
                 <div class="network-list" id="token-list">
                     <div style="color:#bdc3c7; font-size:0.9rem;">Loading...</div>
                 </div>
-                <div class="add-token-form" id="add-token-form">
-                    <div class="form-group">
-                        <label class="label">Token Name</label>
-                        <input type="text" id="token-name" placeholder="z.B. Home Server">
-                    </div>
-                    <div class="btn-row">
-                        <button onclick="createToken()" class="btn btn-sm"><i class="fa-solid fa-plus"></i>
-                            Erstellen</button>
-                        <button onclick="toggleTokenForm(false)" class="btn btn-sm btn-secondary"><i
-                                class="fa-solid fa-xmark"></i> Abbrechen</button>
-                    </div>
-                </div>
                 <div style="margin-top:15px;">
-                    <button onclick="toggleTokenForm(true)" class="btn btn-sm" id="btn-add-token">
+                    <button onclick="openCreateTokenModal()" class="btn btn-sm">
                         <i class="fa-solid fa-plus"></i> Neuer Token
                     </button>
                 </div>
@@ -650,6 +631,27 @@ namespace EspWeb
             <div class="btn-row">
                 <button onclick="copyNewToken()" class="btn btn-sm"><i class="fa-solid fa-copy"></i> Kopieren</button>
                 <button onclick="closeModal('modal-new-token')" class="btn btn-sm btn-secondary">Schliessen</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-create-token">
+        <div class="modal" style="text-align:left;max-width:480px;">
+            <div class="modal-icon" style="text-align:center;"><i class="fa-solid fa-key"></i></div>
+            <h3 style="text-align:center;">Neuer API Token</h3>
+            <div class="form-group" style="margin-bottom:15px;">
+                <label class="label">Token Name</label>
+                <input type="text" id="create-token-name" placeholder="z.B. Home Server" style="width:100%;box-sizing:border-box;padding:0.6rem;border:1px solid #ddd;border-radius:4px;">
+            </div>
+            <div class="form-group">
+                <label class="label">Berechtigungen</label>
+                <div id="action-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+                    <div style="color:#bdc3c7;font-size:0.9rem;">Laden...</div>
+                </div>
+            </div>
+            <div class="btn-row" style="margin-top:20px;justify-content:center;">
+                <button onclick="createToken()" class="btn btn-sm"><i class="fa-solid fa-plus"></i> Erstellen</button>
+                <button onclick="closeModal('modal-create-token')" class="btn btn-sm btn-secondary"><i class="fa-solid fa-xmark"></i> Abbrechen</button>
             </div>
         </div>
     </div>
@@ -827,10 +829,24 @@ namespace EspWeb
 
         async function logOut() { await fetch('/admin/logout'); }
 
-        function toggleTokenForm(open) {
-            document.getElementById('add-token-form').style.display = open ? 'block' : 'none';
-            document.getElementById('btn-add-token').style.display = open ? 'none' : 'inline-flex';
-            if (open) document.getElementById('token-name').value = '';
+        async function openCreateTokenModal() {
+            document.getElementById('create-token-name').value = '';
+            const checkboxes = document.getElementById('action-checkboxes');
+            checkboxes.innerHTML = '<div style="color:#bdc3c7;font-size:0.9rem;">Laden...</div>';
+            openModal('modal-create-token');
+            try {
+                const res = await fetch('/admin/token/actions');
+                const json = await res.json();
+                const actions = json.actions || [];
+                checkboxes.innerHTML = actions.map(a => `
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;background:#f0f2f5;border-radius:6px;font-size:0.9rem;">
+                        <input type="checkbox" value="${escapeHtml(a)}" ${a === 'admin' ? 'checked' : ''}>
+                        ${escapeHtml(a)}
+                    </label>
+                `).join('');
+            } catch(e) {
+                checkboxes.innerHTML = '<div style="color:#e74c3c;font-size:0.9rem;">Fehler beim Laden.</div>';
+            }
         }
 
         async function loadPermTokens() {
@@ -859,16 +875,18 @@ namespace EspWeb
         }
 
         async function createToken() {
-            const name = document.getElementById('token-name').value.trim();
+            const name = document.getElementById('create-token-name').value.trim();
             if (!name) return;
+            const actions = Array.from(document.querySelectorAll('#action-checkboxes input[type=checkbox]:checked'))
+                .map(cb => cb.value);
             const res = await fetch('/admin/token', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
+                body: JSON.stringify({ name, actions })
             });
             if (!res.ok) { alert('Fehler beim Erstellen des Tokens'); return; }
             const json = await res.json();
-            toggleTokenForm(false);
+            closeModal('modal-create-token');
             loadPermTokens();
             document.getElementById('new-token-name').textContent = json.name;
             document.getElementById('new-token-value').textContent = json.token;
@@ -955,7 +973,7 @@ namespace EspWeb
         if (req.path == "/admin" || req.path == "/admin/login")
             return;
 
-        if (! req.token.isAllowed("admin"))
+        if (!req.token.isAllowed("admin"))
             res.Redirect("/admin").finalize();
         else
             res.OK().text("Authenticated");
@@ -1000,7 +1018,7 @@ namespace EspWeb
         }
 
         JsonDocument doc;
-        doc["token"] = TokenManager::instance().getSessionToken(3600, { "admin" }).value;
+        doc["token"] = TokenManager::instance().getSessionToken(3600, {"admin"}).value;
 
         res.json(doc);
     }
@@ -1059,20 +1077,21 @@ namespace EspWeb
 
     void post_PermToken(Request &req, Response &res)
     {
-        if (!req.body.json()["name"].is<std::string>())
+        JsonDocument &body = req.body.json();
+
+        if (!body["name"].is<std::string>() || body["name"].as<std::string>().empty())
         {
             res.BadRequest().text("Missing name");
             return;
         }
 
-        const std::string name = req.body.json()["name"].as<std::string>();
-        if (name.empty())
-        {
-            res.BadRequest().text("Name cannot be empty");
-            return;
-        }
+        const std::string name = body["name"].as<std::string>();
 
-        const Token &token = TokenManager::instance().getApiToken(name, { "admin" });
+        std::vector<std::string> actions;
+        for (JsonVariant value : body["actions"].as<JsonArray>())
+            actions.push_back(value.as<std::string>());
+
+        const Token token = TokenManager::instance().getApiToken(name, actions);
 
         JsonDocument doc;
         doc["name"] = token.name;
