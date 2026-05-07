@@ -192,6 +192,8 @@ namespace EspWeb
             this->header("Content-Type", "text/css");
         else if (ext == ".html")
             this->html();
+        else if (ext == ".ico")
+            this->header("Content-Type", "image/x-icon");
         else if (ext == ".js")
             this->header("Content-Type", "application/javascript");
         else if (ext == ".json")
