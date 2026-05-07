@@ -159,13 +159,6 @@ namespace EspWeb
      **/
     Response &Response::file(const std::string &path)
     {
-        this->binaryFile(path);
-        this->header("Content-Type", "text/html; charset=utf-8;");
-        return *this;
-    }
-
-    Response &Response::binaryFile(const std::string &path)
-    {
         File file = LittleFS.open(path.c_str(), "r");
         if (!file)
         {
@@ -180,7 +173,6 @@ namespace EspWeb
             Serial.println("⚠️  WARNING: File size is 0 bytes!");
         }
 
-        this->header("Content-Type", "application/octet-stream");
         this->fileSize = file.size();
         this->filePath = path;
         this->isFileMode = true;
@@ -188,6 +180,65 @@ namespace EspWeb
         Serial.printf("✅ File '%s' is ready to be served (size: %d bytes)\n", path.c_str(), this->fileSize);
 
         file.close();
+
+        std::string ext;
+        const auto dot = path.find_last_of('.');
+        if (dot != std::string::npos)
+        {
+            ext = path.substr(dot);
+        }
+
+        if (ext == ".css")
+            this->header("Content-Type", "text/css");
+        else if (ext == ".html")
+            this->html();
+        else if (ext == ".js")
+            this->header("Content-Type", "application/javascript");
+        else if (ext == ".json")
+            this->json();
+        else if (ext == ".svg")
+            this->header("Content-Type", "image/svg+xml");
+        else if (ext == ".png")
+            this->header("Content-Type", "image/png");
+        else if (ext == ".jpg" || ext == ".jpeg")
+            this->header("Content-Type", "image/jpeg");
+        else if (ext == ".ico")
+            this->header("Content-Type", "image/x-icon");
+        else if (ext == ".txt")
+            this->text();
+        else if (ext == ".xml")
+            this->header("Content-Type", "application/xml");
+        else
+            this->binary();
+
+        return *this;
+    }
+
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Content Type setters
+     **/
+    Response &Response::binary()
+    {
+        this->header("Content-Type", "application/octet-stream");
+        return *this;
+    }
+
+    Response &Response::text()
+    {
+        this->header("Content-Type", "text/plain; charset=utf-8");
+        return *this;
+    }
+
+    Response &Response::json()
+    {
+        this->header("Content-Type", "application/json");
+        return *this;
+    }
+
+    Response &Response::html()
+    {
+        this->header("Content-Type", "text/html; charset=utf-8");
         return *this;
     }
 
@@ -195,7 +246,7 @@ namespace EspWeb
     {
         this->body = text;
         this->isFileMode = false;
-        this->header("Content-Type", "text/plain");
+        this->text();
         return *this;
     }
 
@@ -206,14 +257,14 @@ namespace EspWeb
 
         this->body = jsonStr;
         this->isFileMode = false;
-        this->header("Content-Type", "application/json");
+        this->json();
         return *this;
     }
 
     Response &Response::html(const std::string &htmlBody)
     {
         this->text(htmlBody);
-        this->header("Content-Type", "text/html; charset=utf-8");
+        this->html();
         return *this;
     }
 

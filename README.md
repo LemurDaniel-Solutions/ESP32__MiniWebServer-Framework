@@ -62,7 +62,7 @@ board_build.include_files_txt =
 
 ## 🔐 Admin Dashboard
 
-The built-in Admin Dashboard is available at `/admin` on every device. No extra configuration needed — it's always on.
+The built-in Admin Dashboard is available at `/admin` on every device. No extra configuration needed and can also be turned off easily.
 
 ![Admin Dashboard](.assets/admin.dashboard.overview.png)
 
@@ -365,13 +365,39 @@ A `Response` object is passed to every handler. The response is sent automatical
 
 | Method | Content-Type | Example |
 |--------|-------------|---------|
-| `text(str)` | `text/plain` | `res.text("Hello").status(200)` |
+| `text(str)` | `text/plain; charset=utf-8` | `res.text("Hello").status(200)` |
 | `json(doc)` | `application/json` | `res.json(doc).status(200)` |
-| `html(str)` | `text/html` | `res.html("<h1>Hi</h1>").status(200)` |
-| `file(path)` | `text/html`| `res.file("/web/index.html")` |
-| `binaryFile(path)` | `application/octet-stream` | `res.binaryFile("/data.bin")` |
+| `html(str)` | `text/html; charset=utf-8` | `res.html("<h1>Hi</h1>").status(200)` |
+| `file(path)` | auto-detected from extension | `res.file("/web/index.html")` |
+| `binary(path)` | `application/octet-stream` | `res.binary("/data.bin")` |
 
-Call `.header("Content-Type", "<Content-Type>")` to change type yourself.
+`file(path)` sets the `Content-Type` automatically based on the file extension:
+
+| Extension | Content-Type |
+|-----------|-------------|
+| `.html` | `text/html; charset=utf-8` |
+| `.css` | `text/css` |
+| `.js` | `application/javascript` |
+| `.json` | `application/json` |
+| `.txt` | `text/plain; charset=utf-8` |
+| `.xml` | `application/xml` |
+| `.svg` | `image/svg+xml` |
+| `.png` | `image/png` |
+| `.jpg` / `.jpeg` | `image/jpeg` |
+| `.ico` | `image/x-icon` |
+| *(other)* | `application/octet-stream` |
+
+To override the `Content-Type` without setting a body, use the no-arg setters:
+
+```cpp
+res.file("/data.bin").text();   // overwrite to text/plain
+res.html();                     // Content-Type: text/html; charset=utf-8
+res.json();                     // Content-Type: application/json
+res.text();                     // Content-Type: text/plain; charset=utf-8
+res.binary();                   // Content-Type: application/octet-stream
+```
+
+Or call `.header("Content-Type", "<value>")` directly.
 
 ### Status shorthands
 

@@ -235,19 +235,7 @@ namespace EspWeb
 
         const RequestHandler &handler = [file_path](const EspWeb::Request &req, EspWeb::Response &res)
         {
-            std::string ext;
-            auto dot = file_path.find_last_of('.');
-            if (dot != std::string::npos)
-            {
-                ext = file_path.substr(dot);
-            }
-
             res.file(file_path);
-
-            if (ext == ".css")
-                res.header("Content-Type", "text/css");
-            else if (ext == ".html")
-                res.header("Content-Type", "text/html; charset=utf-8");
         };
 
         addRoute("GET", path, handler);

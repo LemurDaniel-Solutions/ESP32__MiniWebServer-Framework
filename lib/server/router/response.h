@@ -70,9 +70,17 @@ namespace EspWeb
          * Response body helpers for different content types
          **/
         Response &file(const std::string &path);
-        Response &binaryFile(const std::string &path);
         Response &text(const std::string &text);
         Response &json(const JsonDocument &bodyJson);
         Response &html(const std::string &htmlBody);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Content Type setters
+         **/
+        Response &binary();
+        Response &text();
+        Response &json();
+        Response &html();
     };
 }
