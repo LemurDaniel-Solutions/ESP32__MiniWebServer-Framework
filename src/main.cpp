@@ -27,11 +27,11 @@ void setup()
   // Take care of CORS
   // Server->use(Server->cors());
 
-  // Use MDNS
-  Server->dns("myESP32");
+  // Server->root("/web");
+  // Server->index("/web/index.html");
 
-  Server->root("/web");
-  Server->index("/web/index.html");
+  // Use MDNS - avialable as myESP32.local. May not work depending on Browser.
+  Server->dns("myESP32"); 
 
   Server->registerRouter(routes_example::Router());
 

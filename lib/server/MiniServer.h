@@ -94,6 +94,8 @@ namespace EspWeb
         void closeServer();
 
         int _is_running = false;
+        int _is_root_set = false;
+        int _is_index_set = false;
         int _is_admin_enabled = true;
         int _is_dashboard_enabled = true;
 

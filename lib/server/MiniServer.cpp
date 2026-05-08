@@ -243,6 +243,7 @@ namespace EspWeb
 
     void MiniServer::root(const std::string &folder_path, const std::string &prefix)
     {
+        _is_root_set = true;
         FOLDER_WEB = folder_path;
         std::vector<FileInfo> files = listFiles(folder_path);
         for (FileInfo info : files)
@@ -260,6 +261,7 @@ namespace EspWeb
 
     void MiniServer::index(const std::string &index_path)
     {
+        _is_index_set = true;
         staticFile("/", index_path);
         staticFile("/index", index_path);
         staticFile("/index.html", index_path);
@@ -343,9 +345,14 @@ namespace EspWeb
         if (_is_admin_enabled)
         {
             this->registerRouter(EspWeb::AdminRouter(_is_dashboard_enabled));
+            this->registerRouter(EspWeb::UpdateRouter());
         }
 
-        this->registerRouter(EspWeb::UpdateRouter());
+        if (!_is_root_set && !_is_index_set)
+        {
+            this->root(FOLDER_WEB);
+            this->index(FOLDER_WEB + "/" + "index.html");
+        }
 
         if (!WiFiUtility::instance().isNetworkReady())
         {
