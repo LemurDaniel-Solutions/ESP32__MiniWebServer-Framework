@@ -23,7 +23,6 @@
 #include <utils/utility.file.h>
 #include <utils/utility.wifi.h>
 #include <utils/utility.admin.h>
-#include <utils/utility.update.h>
 
 #include <router/router.h>
 

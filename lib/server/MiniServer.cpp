@@ -345,7 +345,6 @@ namespace EspWeb
         if (_is_admin_enabled)
         {
             this->registerRouter(EspWeb::AdminRouter(_is_dashboard_enabled));
-            this->registerRouter(EspWeb::UpdateRouter());
         }
 
         if (!_is_root_set && !_is_index_set)

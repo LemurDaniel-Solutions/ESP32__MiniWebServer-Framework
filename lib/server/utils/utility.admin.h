@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <Update.h>
+
 #include <router/router.h>
 #include <utils/utility.wifi.h>
 
@@ -54,12 +56,27 @@ namespace EspWeb
     void delete_WiFiSavedNetwork(Request &req, Response &res);
     void post_WiFiSavedNetwork(Request &req, Response &res);
 
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Handle Updates
+     *
+     **/
+
+    void post_UploadFile(Request &req, Response &res);
+    void post_UpdateCode(Request &req, Response &res);
+    void get_ClearWebsite(Request &req, Response &res);
+
     class AdminRouter : public EspWeb::Router
     {
     public:
         AdminRouter(int enableDashboard)
         {
             use("/admin", auth_handler);
+            use("/upload", auth_handler);
+
+            route("POST", "/upload/code", post_UpdateCode);
+            route("POST", "/upload/file", post_UploadFile);
+            route("GET", "/upload/clear/website", get_ClearWebsite);
 
             // Returns the html sites
             if (enableDashboard)
