@@ -181,6 +181,8 @@ namespace EspWeb
 
         file.close();
 
+        this->status(200);
+
         std::string ext;
         const auto dot = path.find_last_of('.');
         if (dot != std::string::npos)
