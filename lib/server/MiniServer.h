@@ -23,6 +23,7 @@
 #include <utils/utility.file.h>
 #include <utils/utility.wifi.h>
 #include <utils/utility.admin.h>
+#include <utils/utility.path.h>
 
 #include <router/router.h>
 
@@ -102,8 +103,8 @@ namespace EspWeb
         void handleClient(int client_socket);
 
         // Map of "METHOD PATH" to handler function for dynamic routes
-        std::map<std::string, std::vector<RequestHandler>> _routes;
-        std::map<std::string, std::vector<RequestHandler>> _middlewares;
+        PathResolver _routes;
+        PathResolver _middlewares;
         void addRoute(const std::string &method, const std::string &path, const RequestHandler &handler);
         void addRoute(const std::string &method, const std::string &path, const std::vector<RequestHandler> &handlers);
 

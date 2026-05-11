@@ -35,4 +35,30 @@ namespace routes_example
         res.json(response).status(201);
     }
 
+    void Router::get_echo(EspWeb::Request &req, EspWeb::Response &res)
+    {
+        const auto it = req.route.find("message");
+        if (it == req.route.end())
+        {
+            res.text("missing param").status(400);
+            return;
+        }
+        res.text(it->second).status(200);
+    }
+
+    void Router::get_user_info(EspWeb::Request &req, EspWeb::Response &res)
+    {
+        const auto it = req.route.find("id");
+        if (it == req.route.end())
+        {
+            res.text("missing param").status(400);
+            return;
+        }
+
+        JsonDocument response;
+        response["id"] = it->second;
+        response["name"] = "User " + it->second;
+        res.json(response).status(200);
+    }
+
 }

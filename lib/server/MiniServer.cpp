@@ -90,32 +90,26 @@ namespace EspWeb
         }
 
         // Search for matching middlewares
-        for (const auto &entry : _middlewares)
+        const std::vector<RequestHandler> middlewares = _middlewares.resolve(request.path, request, true);
+        Serial.printf("Middlewares resolved for %s: %d\n", request.path.c_str(), middlewares.size());
+        for (const RequestHandler &handler : middlewares)
         {
-            if (request.path.find(entry.first) != 0)
+            handler(request, response);
+            if (response.isFinalized())
             {
-                continue;
-            }
-
-            for (const RequestHandler &handler : entry.second)
-            {
-                handler(request, response);
-                if (response.isFinalized())
-                {
-                    return Response::send(client_socket, response);
-                }
+                Serial.printf("Middleware finalized response for %s\n", request.path.c_str());
+                return Response::send(client_socket, response);
             }
         }
 
         // Search for matching route
         std::string routeKey;
-        routeKey.reserve(request.method.size() + 1 + request.path.size());
+        routeKey.reserve(request.method.size() + request.path.size());
         routeKey = request.method;
-        routeKey += ' ';
         routeKey += request.path;
 
-        auto entry = _routes.find(routeKey);
-        if (entry == _routes.end())
+        const std::vector<RequestHandler> routes = _routes.resolve(routeKey, request, false);
+        if (routes.size() == 0)
         {
             response.NotFound();
             Response::send(client_socket, response);
@@ -123,8 +117,7 @@ namespace EspWeb
             return;
         }
 
-        const std::vector<RequestHandler> &route = entry->second;
-        for (const RequestHandler &handler : route)
+        for (const RequestHandler &handler : routes)
         {
             handler(request, response);
             if (response.isFinalized())
@@ -142,17 +135,7 @@ namespace EspWeb
 
     void MiniServer::use(const std::string &prefix, const RequestHandler &handler)
     {
-        auto entry = _middlewares.find(prefix);
-        if (entry != _middlewares.end())
-        {
-            std::vector<RequestHandler> &list = entry->second;
-            list.push_back(handler);
-        }
-        else
-        {
-            std::vector<RequestHandler> list{handler};
-            _middlewares.insert({prefix, list});
-        }
+        _middlewares.add(prefix, {handler});
     }
     void MiniServer::use(const RequestHandler &handler)
     {
@@ -167,7 +150,11 @@ namespace EspWeb
 
     void MiniServer::addRoute(const std::string &method, const std::string &path, const std::vector<RequestHandler> &handlers)
     {
-        _routes.insert({method + " " + path, handlers});
+        if(path[0] != '/') {
+            _routes.add(method + "/" + path, handlers);
+        } else {
+            _routes.add(method + path, handlers);
+        }
     }
     void MiniServer::addRoute(const std::string &method, const std::string &path, const RequestHandler &handler)
     {

@@ -511,6 +511,56 @@ Server->get("/search", [](EspWeb::Request &req, EspWeb::Response &res) {
 ---
 
 <details>
+<summary>🔀 Route Parameters</summary>
+
+Dynamic path segments are declared with a `:` prefix and accessed via `req.route`:
+
+```cpp
+Server->get("/users/:id", [](EspWeb::Request &req, EspWeb::Response &res) {
+    std::string id = req.route["id"];
+    res.text("User: " + id).OK();
+});
+```
+
+Multiple parameters in a single path are supported:
+
+```cpp
+Server->get("/users/:id/posts/:postId", [](EspWeb::Request &req, EspWeb::Response &res) {
+    std::string userId = req.route["id"];
+    std::string postId = req.route["postId"];
+
+    JsonDocument doc;
+    doc["userId"] = userId;
+    doc["postId"] = postId;
+    res.json(doc).OK();
+});
+```
+
+Always check that the parameter exists before using it:
+
+```cpp
+Server->get("/echo/:message", [](EspWeb::Request &req, EspWeb::Response &res) {
+    const auto it = req.route.find("message");
+    if (it == req.route.end()) {
+        res.text("missing param").status(400);
+        return;
+    }
+    res.text(it->second).OK();
+});
+```
+
+| Access | Description |
+|--------|-------------|
+| `req.route["key"]` | Value of a route parameter |
+| `req.route.find("key") != req.route.end()` | Check if a parameter is present |
+
+> Exact path segments take priority over route parameters — `/users/profile` matches before `/users/:id`.
+
+</details>
+
+---
+
+<details>
 <summary>🔗 Middleware Chain</summary>
 
 Middleware lets you chain multiple handler functions for a single route. Each handler runs in order. Calling `res.finalize()` stops the chain immediately — no further handlers run.
@@ -561,6 +611,9 @@ route("POST", "/config", { authMiddleware, post_config });
 
 **Global / prefix-based** — register via `use()`. Runs before every route whose path starts with the given prefix. Useful for logging, CORS headers, or auth that spans multiple endpoints:
 
+> ⚠️ `use()` matches **full path segments only** — no wildcards, no partial matches.
+> `use("/api")` matches `/api`, `/api/data`, `/api/config` but **not** `/apiv2` or `/ap`.
+
 ```cpp
 class Router : public EspWeb::Router
 {
@@ -570,7 +623,7 @@ public:
         // Runs before every route
         use("/", loggingMiddleware);
 
-        // Runs before every route under /api
+        // Runs before every route under /api (full segment match — /apiv2 is NOT matched)
         use("/api", authMiddleware);
 
         route("GET", "/hello",      get_hello);

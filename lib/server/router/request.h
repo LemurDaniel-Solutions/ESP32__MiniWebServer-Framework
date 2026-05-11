@@ -129,6 +129,7 @@ namespace EspWeb
         std::map<std::string, std::string> headers;
         std::map<std::string, std::string> cookies;
         std::map<std::string, std::string> query;
+        std::map<std::string, std::string> route;
 
         RequestBody body;
 
