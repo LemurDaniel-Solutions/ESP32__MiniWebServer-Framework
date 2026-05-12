@@ -135,7 +135,14 @@ namespace EspWeb
 
     void MiniServer::use(const std::string &prefix, const RequestHandler &handler)
     {
-        _middlewares.add(prefix, {handler});
+        if (prefix[0] != '/')
+        {
+            _middlewares.add(prefix, {handler});
+        }
+        else
+        {
+            _middlewares.add(prefix, {handler});
+        }
     }
     void MiniServer::use(const RequestHandler &handler)
     {
@@ -150,9 +157,12 @@ namespace EspWeb
 
     void MiniServer::addRoute(const std::string &method, const std::string &path, const std::vector<RequestHandler> &handlers)
     {
-        if(path[0] != '/') {
+        if (path[0] != '/')
+        {
             _routes.add(method + "/" + path, handlers);
-        } else {
+        }
+        else
+        {
             _routes.add(method + path, handlers);
         }
     }

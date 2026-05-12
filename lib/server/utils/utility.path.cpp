@@ -9,7 +9,7 @@ namespace EspWeb
 
     /*-------------------------------------------------------------------------------------------------
      *
-     * Path Resolver 
+     * Path Resolver
      *
      **/
 
@@ -24,7 +24,7 @@ namespace EspWeb
 
     /*-------------------------------------------------------------------------------------------------
      *
-     * Path Node - Messy Code incoming
+     * Path Node - Messy Code incoming - This is supposed to be a TRIE-Structure
      *
      **/
     std::vector<RequestHandler> PathNode::resolve(const std::string &path, Request &req, bool accumulate)
@@ -50,7 +50,7 @@ namespace EspWeb
         std::vector<RequestHandler> handlers;
         if (accumulate)
         {
-            for (const RequestHandler handler : this->handlers)
+            for (const RequestHandler &handler : this->handlers)
             {
                 handlers.push_back(handler);
             }
@@ -62,8 +62,8 @@ namespace EspWeb
         auto node = nodes.find(segment);
         if (node != nodes.end())
         {
-            std::vector<RequestHandler> result = nodes[segment].resolve(path, req, accumulate);
-            for (const RequestHandler handler : result)
+            const std::vector<RequestHandler> &result = nodes[segment].resolve(path, req, accumulate);
+            for (const RequestHandler &handler : result)
             {
                 handlers.push_back(handler);
             }
@@ -71,16 +71,17 @@ namespace EspWeb
             return handlers;
         }
 
-        // Search for route parameter - messy code
+        // Search for route parameter
         node = nodes.find(":");
         if (node != nodes.end())
         {
             req.route.insert({node->second.segment, segment});
-            std::vector<RequestHandler> result = nodes[":"].resolve(path, req, accumulate);
-            for (const RequestHandler handler : result)
+            const std::vector<RequestHandler> &result = nodes[":"].resolve(path, req, accumulate);
+            for (const RequestHandler &handler : result)
             {
                 handlers.push_back(handler);
             }
+            return handlers;
         }
 
         return handlers;
