@@ -786,3 +786,81 @@ void get_data(EspWeb::Request &req, EspWeb::Response &res)
 
 ---
 
+<details>
+<summary>📡 Streaming</summary>
+
+Streaming sends data incrementally over a single HTTP connection using **chunked transfer encoding**. The connection stays open until `endStream()` is called.
+
+### Basic streaming
+
+```cpp
+Server->get("/stream", [](EspWeb::Request &req, EspWeb::Response &res) {
+    res.beginStream();
+
+    for (int i = 0; i < 100; i++) {
+        res.sendChunk(std::to_string(i) + "\n");
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    res.endStream();
+});
+```
+
+`beginStream()` sends the HTTP response headers immediately. Each `sendChunk()` call flushes a chunk to the client right away. `endStream()` sends the terminal chunk and closes the stream.
+
+### Server-Sent Events (SSE)
+
+For real-time updates in a browser without JavaScript polling, use the `text/event-stream` content type. The browser's built-in `EventSource` API handles reconnection automatically.
+
+**Server:**
+```cpp
+Server->get("/events", [](EspWeb::Request &req, EspWeb::Response &res) {
+    res.header("Content-Type", "text/event-stream");
+    res.beginStream();
+
+    for (int i = 0; i < 100; i++) {
+        std::string msg = "data: " + std::to_string(i) + "\n\n";
+        res.sendChunk(msg);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
+    res.endStream();
+});
+```
+
+**Browser:**
+```javascript
+const es = new EventSource('/events');
+es.onmessage = e => console.log(e.data);
+es.onerror   = () => es.close();
+```
+
+> SSE messages must end with a blank line (`\n\n`). Named events use `event: <name>\n` before the `data:` line.
+
+### Adjusting the timeout
+
+The default socket timeout is 30 seconds. For long-running streams, call `setTimeout()` **before** `beginStream()`:
+
+```cpp
+res.setTimeout(300); // 5 minutes
+res.beginStream();
+```
+
+Pass `0` to disable the timeout entirely.
+
+### API reference
+
+| Method | Description |
+|--------|-------------|
+| `beginStream()` | Send response headers and open the stream |
+| `sendChunk(std::string)` | Send a string chunk |
+| `sendChunk(uint8_t*, size_t)` | Send a binary chunk |
+| `endStream()` | Send the terminal chunk and close the stream |
+| `setTimeout(int seconds)` | Set socket send/receive timeout |
+
+> Testing with `curl -N http://<IP>/stream` is the fastest way to verify streaming works before debugging browser behaviour.
+
+</details>
+
+---
+

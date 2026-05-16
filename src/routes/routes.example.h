@@ -19,9 +19,13 @@ namespace routes_example
             route("POST", "/data", post_data);
             route("GET", "/echo/:message", get_echo);
             route("GET", "/users/:id/info", get_user_info);
+            route("GET", "/stream", get_stream);
+            route("GET", "/events", get_events);
         }
 
     private:
+        static void get_stream(EspWeb::Request &req, EspWeb::Response &res);
+        static void get_events(EspWeb::Request &req, EspWeb::Response &res);
         static void get_hello(EspWeb::Request &req, EspWeb::Response &res);
         static void get_status(EspWeb::Request &req, EspWeb::Response &res);
         static void get_example(EspWeb::Request &req, EspWeb::Response &res);

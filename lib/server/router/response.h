@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <Arduino.h>
+#include <sys/socket.h>
+
 #include <ArduinoJson.h>
 
 #include <LittleFS.h>
@@ -25,17 +28,39 @@ namespace EspWeb
         std::map<std::string, std::string> headers;
 
         // For static file responses, this will be set to the file path to serve
-        size_t fileSize;
+        size_t fileSize = 0;
         std::string filePath;
 
         bool isFileMode = false;
         std::string body;
 
-    private:
-        void send(int socket);
+        int socket;
+        int isSent = false;
+        int isHeaderSent = false;
+        int isStreaming = false;
 
     public:
-        static void send(int socket, Response &res);
+        Response(int socket)
+        {
+            this->socket = socket;
+        }
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * sending & streaming
+         **/
+
+        void send();
+        void beginStream();
+        void endStream();
+        void setTimeout(int seconds);
+        void sendChunk(const std::string &data);
+        void sendChunk(const uint8_t *data, size_t len);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Finalize
+         **/
 
         Response &finalize();
         int isFinalized()
@@ -48,7 +73,7 @@ namespace EspWeb
          * Headers
          **/
         Response &header(const std::string &key, const std::string &value);
-        std::string getHeaders();
+        void sendHeaders();
 
         /*-------------------------------------------------------------------------------------------------
          *

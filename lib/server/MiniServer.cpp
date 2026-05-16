@@ -76,14 +76,13 @@ namespace EspWeb
 
     void MiniServer::handleClient(int client_socket)
     {
-        Response response = Response();
+        Response response = Response(client_socket);
 
         // Parse the raw HTTP request into a structured Request object
         Request request = Request::parse(client_socket);
         if (request.rejected)
         {
-            response.status(413).text(request.error);
-            Response::send(client_socket, response);
+            response.status(413).text(request.error).send();
             struct linger sl = {1, 0};
             setsockopt(client_socket, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
             return;
@@ -98,7 +97,8 @@ namespace EspWeb
             if (response.isFinalized())
             {
                 Serial.printf("Middleware finalized response for %s\n", request.path.c_str());
-                return Response::send(client_socket, response);
+                response.send();
+                return;
             }
         }
 
@@ -111,8 +111,7 @@ namespace EspWeb
         const std::vector<RequestHandler> routes = _routes.resolve(routeKey, request, false);
         if (routes.size() == 0)
         {
-            response.NotFound();
-            Response::send(client_socket, response);
+            response.NotFound().send();
             Serial.printf("No handler found for route: %s\n", routeKey.c_str());
             return;
         }
@@ -121,10 +120,14 @@ namespace EspWeb
         {
             handler(request, response);
             if (response.isFinalized())
-                break;
+            {
+                Serial.printf("route finalized response for %s\n", request.path.c_str());
+                response.send();
+                return;
+            }
         }
 
-        Response::send(client_socket, response);
+        response.send();
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -282,11 +285,12 @@ namespace EspWeb
             {
                 // --- TIMEOUT SETUP START ---
                 struct timeval tv;
-                tv.tv_sec = 5;
+                tv.tv_sec = CONNECTION_TIMEOUT_SEC;
                 tv.tv_usec = 0;
 
                 setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
                 setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+                
                 // --- TIMEOUT SETUP END ---
                 Serial.println("--------------------------------------------------------------------");
                 Serial.printf("Worker handling client on socket %d\n", client_socket);

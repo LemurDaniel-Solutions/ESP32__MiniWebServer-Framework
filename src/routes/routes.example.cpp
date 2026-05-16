@@ -61,4 +61,31 @@ namespace routes_example
         res.json(response).status(200);
     }
 
+    void Router::get_stream(EspWeb::Request &req, EspWeb::Response &res)
+    {
+        res.beginStream();
+
+        for (int i = 0; i < 100; i++)
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            res.sendChunk(std::to_string(i));
+        }
+
+        res.endStream();
+    }
+
+    void Router::get_events(EspWeb::Request &req, EspWeb::Response &res)
+    {
+        res.header("Content-Type", "text/event-stream");
+        res.beginStream();
+
+        for (int i = 0; i < 100; i++)
+        {
+            std::string msg = "data: " + std::to_string(i) + "\n\n";
+            res.sendChunk(msg);
+            vTaskDelay(pdMS_TO_TICKS(500));
+        }
+
+        res.endStream();
+    }
 }

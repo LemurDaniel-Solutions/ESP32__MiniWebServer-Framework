@@ -4,13 +4,11 @@
 
 #pragma once
 
+#include <Arduino.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-#include <Arduino.h>
-
-#include <arpa/inet.h>
 #include <sys/socket.h>
 
 #include <vector>
@@ -32,7 +30,7 @@ namespace EspWeb
 
     const int WORKER_TASK_COUNT = 4;
     const int CONNECTION_LIMIT = 10;
-    const int CONNECTION_TIMEOUT_SEC = 5;
+    const int CONNECTION_TIMEOUT_SEC = 30;
 
     class MiniServer
     {
