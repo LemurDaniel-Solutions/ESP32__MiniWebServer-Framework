@@ -46,10 +46,15 @@ namespace EspWeb
         TokenManager::instance().setCredentials(username, password);
     }
 
-    void MiniServer::setTokenActions(const std::vector<std::string> actions)
+    void MiniServer::setTokenActions(const std::vector<std::string> &actions)
     {
         TOKEN_ACTIONS = actions;
         TOKEN_ACTIONS.insert(TOKEN_ACTIONS.begin(), "admin");
+    }
+
+    void MiniServer::setCustomLink(const std::string &name, const std::string &href)
+    {
+        CUSTOM_LINKS.insert({name, href});
     }
 
     void MiniServer::disableAdmin()
@@ -290,7 +295,7 @@ namespace EspWeb
 
                 setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
                 setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-                
+
                 // --- TIMEOUT SETUP END ---
                 Serial.println("--------------------------------------------------------------------");
                 Serial.printf("Worker handling client on socket %d\n", client_socket);

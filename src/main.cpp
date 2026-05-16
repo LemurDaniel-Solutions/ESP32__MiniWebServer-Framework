@@ -31,7 +31,9 @@ void setup()
   // Server->index("/web/index.html");
 
   // Use MDNS - avialable as myESP32.local. May not work depending on Browser.
-  Server->dns("myESP32"); 
+  Server->dns("myESP32");
+
+  Server->setCustomLink("custom", "/custom");
 
   Server->registerRouter(routes_example::Router());
 

@@ -7,11 +7,28 @@
 namespace EspWeb
 {
 
+    std::map<std::string, std::string> CUSTOM_LINKS = {};
+
     static void restartTask(void *param)
     {
         vTaskDelay(pdMS_TO_TICKS(500));
         ESP.restart();
         vTaskDelete(nullptr);
+    }
+
+    void get_AdminLinks(Request &req, Response &res)
+    {
+
+        JsonDocument doc;
+        JsonArray array = doc.to<JsonArray>();
+        for (const auto &entry : CUSTOM_LINKS)
+        {
+            JsonObject link = array.add<JsonObject>();
+            link["name"] = entry.first;
+            link["href"] = entry.second;
+        }
+
+        res.OK().json(doc);
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -521,6 +538,56 @@ namespace EspWeb
             border: 1px solid #e0e0e0;
             user-select: all;
         }
+
+        .custom-links-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+
+        .custom-links-nav:empty {
+            display: none;
+        }
+
+        .custom-links-nav a {
+            display: inline-flex;
+            align-items: stretch;
+            text-decoration: none;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            transition: transform 0.1s, box-shadow 0.2s;
+            border: 1px solid #ddd;
+        }
+
+        .custom-links-nav a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.13);
+        }
+
+        .custom-links-nav a .link-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 10px;
+            background: var(--primary);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .custom-links-nav a .link-name {
+            display: flex;
+            align-items: center;
+            padding: 8px 14px;
+            background: var(--card-bg);
+            color: var(--text-main);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
     </style>
 </head>
 
@@ -539,6 +606,8 @@ namespace EspWeb
                         class="fa-solid fa-right-from-bracket"></i> Logout</a>
             </div>
         </header>
+
+        <nav class="custom-links-nav" id="custom-links"></nav>
 
         <div class="grid">
             <div class="card">
@@ -619,6 +688,7 @@ namespace EspWeb
                     </button>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -641,7 +711,8 @@ namespace EspWeb
             <h3 style="text-align:center;">Neuer API Token</h3>
             <div class="form-group" style="margin-bottom:15px;">
                 <label class="label">Token Name</label>
-                <input type="text" id="create-token-name" placeholder="z.B. Home Server" style="width:100%;box-sizing:border-box;padding:0.6rem;border:1px solid #ddd;border-radius:4px;">
+                <input type="text" id="create-token-name" placeholder="z.B. Home Server"
+                    style="width:100%;box-sizing:border-box;padding:0.6rem;border:1px solid #ddd;border-radius:4px;">
             </div>
             <div class="form-group">
                 <label class="label">Berechtigungen</label>
@@ -651,7 +722,8 @@ namespace EspWeb
             </div>
             <div class="btn-row" style="margin-top:20px;justify-content:center;">
                 <button onclick="createToken()" class="btn btn-sm"><i class="fa-solid fa-plus"></i> Erstellen</button>
-                <button onclick="closeModal('modal-create-token')" class="btn btn-sm btn-secondary"><i class="fa-solid fa-xmark"></i> Abbrechen</button>
+                <button onclick="closeModal('modal-create-token')" class="btn btn-sm btn-secondary"><i
+                        class="fa-solid fa-xmark"></i> Abbrechen</button>
             </div>
         </div>
     </div>
@@ -844,7 +916,7 @@ namespace EspWeb
                         ${escapeHtml(a)}
                     </label>
                 `).join('');
-            } catch(e) {
+            } catch (e) {
                 checkboxes.innerHTML = '<div style="color:#e74c3c;font-size:0.9rem;">Fehler beim Laden.</div>';
             }
         }
@@ -939,10 +1011,27 @@ namespace EspWeb
             alert('Finished Uploading. Restart may be required!');
         }
 
+        async function loadCustomLinks() {
+            const nav = document.getElementById('custom-links');
+            try {
+                const res = await fetch('/admin/links');
+                const links = await res.json();
+                nav.innerHTML = links.map(link => `
+                    <a href="${escapeHtml(link.href)}" target="_blank">
+                        <span class="link-badge"><i class="fa-solid fa-arrow-up-right-from-square"></i> Link</span>
+                        <span class="link-name">${escapeHtml(link.name)}</span>
+                    </a>
+                `).join('');
+            } catch (e) {
+                nav.innerHTML = '';
+            }
+        }
+
         window.onload = () => {
             loadWiFiConfig();
             loadNetworks();
             loadPermTokens();
+            loadCustomLinks();
             document.getElementById("form-creds").onsubmit = function () {
                 postAdminCredentials();
                 return false;

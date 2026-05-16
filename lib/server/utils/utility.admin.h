@@ -11,6 +11,9 @@
 
 namespace EspWeb
 {
+    extern std::map<std::string, std::string> CUSTOM_LINKS;
+
+    void get_AdminLinks(Request &req, Response &res);
     void get_AdminLogin(Request &req, Response &res);
     void get_AdminDashboard(Request &req, Response &res);
 
@@ -89,7 +92,7 @@ namespace EspWeb
             route("GET", "/admin/logout", get_AdminLogout);
             route("POST", "/admin/login", post_AdminLogin);
 
-            // Return 401 if the token is not valid or missing for any /admin/* route
+            route("GET", "/admin/links", get_AdminLinks);
             route("POST", "/admin/auth", post_AdminUpdateAuth);
 
             // Wifi config routes for admin dashboard

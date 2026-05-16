@@ -90,6 +90,27 @@ Server->disableAdminDashboard();
 Server->disableAdmin();
 ```
 
+#### Custom Links & Admin Pages
+
+Add shortcut links to the Admin Dashboard nav bar with `setCustomLink()`. The links appear as badge-style buttons below the dashboard header and open in a new tab:
+
+```cpp
+Server->setCustomLink("My App", "/");
+Server->setCustomLink("Sensor Data", "/api/sensors");
+Server->setCustomLink("Grafana", "http://grafana.local:3000");
+```
+
+For more complex use cases — device-specific settings, sensor configuration, custom controls — you can register your own pages under `/admin`. They are automatically protected by the admin auth middleware:
+
+```cpp
+Server->get("/admin/sensors", [](EspWeb::Request &req, EspWeb::Response &res) {
+    res.html("<h1>Sensor Settings</h1>").OK();
+});
+
+// Combine with setCustomLink to make them easily reachable from the dashboard
+Server->setCustomLink("Sensor Settings", "/admin/sensors");
+```
+
 #### Permanent API Tokens
 
 Permanent tokens can be created from the **API Tokens** section of the admin dashboard. Unlike session tokens (which expire after 1 hour), permanent tokens persist across reboots and never expire.

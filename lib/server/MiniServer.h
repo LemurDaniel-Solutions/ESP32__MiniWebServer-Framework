@@ -34,6 +34,13 @@ namespace EspWeb
 
     class MiniServer
     {
+    private:
+        std::string _dnsName;
+        struct sockaddr_in _address;
+        unsigned int _address_len;
+        int _server_socket;
+        void closeServer();
+
     public:
         MiniServer();
         ~MiniServer();
@@ -45,12 +52,6 @@ namespace EspWeb
         // If not used, the server will start in AP mode with SSID "ESP32_MiniWebServer" and a default admin page for WiFi configuration
         void connectWiFi(const std::string &ssid, const std::string &password);
         void clearWiFi();
-
-        // Serve a static file as index.html on the root path
-        void index(const std::string &index_path);
-
-        // Serve all files in there as root;
-        void root(const std::string &folder_path, const std::string &prefix = "/");
 
         // Add a static file response for a specific path
         void staticFile(const std::string &path, const std::string &file_path);
@@ -67,36 +68,32 @@ namespace EspWeb
         // delete is a keyword in c++, hence using del
         void del(const std::string &path, const RequestHandler &handler);
 
-        // Add default middleware handler
-        void use(const RequestHandler &handler);
-        void use(const std::string &prefix, const RequestHandler &handler);
-
-        RequestHandler cors(const std::string &origin = "*") { return Router::cors(origin); }
-        RequestHandler auth() { return Router::auth(); }
-
-        // Disables the admin dashboard entirly
-        void disableAdmin();
-        void disableAdminDashboard();
-
         // Overrides the default admin credentials
         void defaultAdminSalt(const std::string &salt);
         void defaultAdminCredentials(const std::string &username, const std::string &password);
 
-        void setTokenActions(const std::vector<std::string> actions);
+    public:
+        void setCustomLink(const std::string &name, const std::string &href);  
+        void setTokenActions(const std::vector<std::string> &actions);
 
     private:
-        std::string _dnsName;
-        struct sockaddr_in _address;
-        unsigned int _address_len;
-        int _server_socket;
-        void closeServer();
-
         int _is_running = false;
         int _is_root_set = false;
         int _is_index_set = false;
         int _is_admin_enabled = true;
         int _is_dashboard_enabled = true;
 
+    public:
+        // Disables the admin dashboard entirly
+        void disableAdmin();
+        void disableAdminDashboard();
+
+        // Serve a static file as index.html on the root path
+        void index(const std::string &index_path);
+        // Serve all files in there as root;
+        void root(const std::string &folder_path, const std::string &prefix = "/");
+
+    private:
         void processHandlers(Request &req, Response &res);
         void handleClient(int client_socket);
 
@@ -110,5 +107,13 @@ namespace EspWeb
         QueueHandle_t _handleQueue = xQueueCreate(CONNECTION_LIMIT, sizeof(int));
         static void workerTask(void *param);
         static void acceptClientTask(void *param);
+
+    public:
+        // Add default middleware handler
+        void use(const RequestHandler &handler);
+        void use(const std::string &prefix, const RequestHandler &handler);
+
+        RequestHandler cors(const std::string &origin = "*") { return Router::cors(origin); }
+        RequestHandler auth() { return Router::auth(); }
     };
 }
