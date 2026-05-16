@@ -8,6 +8,7 @@
 
 ## Admin Dashboard
 
+- [ ] **Custom admin site** — Customizable links to custom admin sites
 - [✅] **Change password** — update admin password via dashboard (UI card exists, backend missing)
 - [✅] **Update Webiste** — Folder Picker to upload and replace hosted website
 
