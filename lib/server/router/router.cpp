@@ -7,7 +7,7 @@
 namespace EspWeb
 {
 
-    JsonFileHandler::JsonFileHandler fs;
+    FileHandler Router::fs;
 
     /*-------------------------------------------------------------------------------------------------
      *

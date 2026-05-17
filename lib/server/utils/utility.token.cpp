@@ -29,7 +29,7 @@ namespace EspWeb
 
     Token Token::getSessionToken(long durationSeconds, const std::vector<std::string> &action)
     {
-        std::string value = TokenManager::instance().generateSHA256(randomString());
+        std::string value = TokenManager::instance().generateSHA256(fileHandler.randomString());
         Token token("Session Token", value, action);
         token._expires = ::millis() / 1000 + durationSeconds;
         return token;
@@ -37,7 +37,7 @@ namespace EspWeb
 
     Token Token::getApiToken(const std::string &name, const std::vector<std::string> &action)
     {
-        std::string value = TokenManager::instance().generateSHA256(randomString());
+        std::string value = TokenManager::instance().generateSHA256(fileHandler.randomString());
         return Token(name, value, action);
     }
 
@@ -68,9 +68,9 @@ namespace EspWeb
         if (_admin)
             (*_admin)[key] = value;
 
-        JsonDocument doc = readJsonFile(ADMIN_CREDENTIALS_FILE);
+        JsonDocument doc = fileHandler.readJson(ADMIN_CREDENTIALS_FILE);
         doc[key] = value;
-        writeJsonFile(ADMIN_CREDENTIALS_FILE, doc);
+        fileHandler.writeJson(ADMIN_CREDENTIALS_FILE, doc);
     }
 
     std::string TokenManager::getValue(const std::string &key)
@@ -78,7 +78,7 @@ namespace EspWeb
         if (_admin == nullptr)
         {
             _admin = new JsonDocument();
-            *_admin = readJsonFile(ADMIN_CREDENTIALS_FILE);
+            *_admin = fileHandler.readJson(ADMIN_CREDENTIALS_FILE);
         }
 
         if ((*_admin)[key].is<std::string>())
@@ -86,7 +86,7 @@ namespace EspWeb
 
         else if (key == "admin_salt")
         {
-            const std::string salt = randomString(32);
+            const std::string salt = fileHandler.randomString(32);
             setSalt(salt);
             return salt;
         }
@@ -209,7 +209,7 @@ namespace EspWeb
     {
         const Token &token = Token::getApiToken(name, action);
 
-        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+        JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
 
         JsonObject tokenObj = doc[name].to<JsonObject>();
         tokenObj["value"] = token.value;
@@ -217,7 +217,7 @@ namespace EspWeb
         for (const std::string &entry : token.action)
             actionArr.add(entry);
 
-        writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
+        fileHandler.writeJson(ADMIN_PERMANENT_TOKENS, doc);
 
         delete _API_TOKENS;
         _API_TOKENS = nullptr;
@@ -228,11 +228,11 @@ namespace EspWeb
 
     void TokenManager::removeApiToken(const std::string &name)
     {
-        JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+        JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
         doc.remove(name);
         delete _API_TOKENS;
         _API_TOKENS = nullptr;
-        writeJsonFile(ADMIN_PERMANENT_TOKENS, doc);
+        fileHandler.writeJson(ADMIN_PERMANENT_TOKENS, doc);
     }
 
     std::vector<Token> TokenManager::listApiTokens()
@@ -240,7 +240,7 @@ namespace EspWeb
         if (_API_TOKENS == nullptr)
         {
             _API_TOKENS = new std::map<std::string, Token>();
-            JsonDocument doc = readJsonFile(ADMIN_PERMANENT_TOKENS);
+            JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
             for (JsonPair kv : doc.as<JsonObject>())
             {
                 std::vector<std::string> actions;

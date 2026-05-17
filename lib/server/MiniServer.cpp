@@ -256,7 +256,7 @@ namespace EspWeb
     {
         _is_root_set = true;
         FOLDER_WEB = folder_path;
-        std::vector<FileInfo> files = listFiles(folder_path);
+        std::vector<FileInfo> files = fileHandler.listFiles(folder_path);
         for (FileInfo info : files)
         {
             if (info.isDirectory)

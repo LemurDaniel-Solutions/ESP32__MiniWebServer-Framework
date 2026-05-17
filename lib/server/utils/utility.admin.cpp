@@ -1293,7 +1293,7 @@ namespace EspWeb
      **/
     void get_ClearWebsite(Request &req, Response &res)
     {
-        clearFolder(FOLDER_WEB);
+        fileHandler.clearFolder(FOLDER_WEB);
         res.OK().text("OK");
     }
 

@@ -32,7 +32,7 @@ namespace EspWeb
 
     void WiFiUtility::clearWiFiConfig()
     {
-        removeFile(WIFI_CONFIG_FILE);
+        fileHandler.removeFile(WIFI_CONFIG_FILE);
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -61,10 +61,10 @@ namespace EspWeb
     {
         std::vector<WiFiConfig> savedNetworks;
 
-        if (!fileExists(WIFI_CONFIG_FILE))
+        if (!fileHandler.exists(WIFI_CONFIG_FILE))
             return savedNetworks;
 
-        JsonDocument doc = readJsonFile(WIFI_CONFIG_FILE);
+        JsonDocument doc = fileHandler.readJson(WIFI_CONFIG_FILE);
         for (JsonPair entry : doc["networks"].as<JsonObject>())
         {
             WiFiConfig config;
@@ -110,22 +110,22 @@ namespace EspWeb
     void WiFiUtility::addWiFiConfig(const std::string &ssid, const std::string &password)
     {
         JsonDocument doc;
-        if (fileExists(WIFI_CONFIG_FILE))
-            doc = readJsonFile(WIFI_CONFIG_FILE);
+        if (fileHandler.exists(WIFI_CONFIG_FILE))
+            doc = fileHandler.readJson(WIFI_CONFIG_FILE);
 
         doc["networks"][ssid]["password"] = password;
 
-        writeJsonFile(WIFI_CONFIG_FILE, doc);
+        fileHandler.writeJson(WIFI_CONFIG_FILE, doc);
     }
 
     void WiFiUtility::removeWiFiConfig(const std::string &ssid)
     {
-        if (!fileExists(WIFI_CONFIG_FILE))
+        if (!fileHandler.exists(WIFI_CONFIG_FILE))
             return;
 
-        JsonDocument doc = readJsonFile(WIFI_CONFIG_FILE);
+        JsonDocument doc = fileHandler.readJson(WIFI_CONFIG_FILE);
         doc["networks"].as<JsonObject>().remove(ssid.c_str());
-        writeJsonFile(WIFI_CONFIG_FILE, doc);
+        fileHandler.writeJson(WIFI_CONFIG_FILE, doc);
     }
 
     WiFiConfig WiFiUtility::getActiveWiFi()

@@ -22,8 +22,7 @@ namespace EspWeb
     class Router
     {
     public:
-        static JsonFileHandler::JsonFileHandler fs;
-        std::map<std::string, std::vector<RequestHandler>> middlewares;
+        static FileHandler fs;
 
         struct Route
         {
@@ -32,6 +31,7 @@ namespace EspWeb
             std::vector<RequestHandler> handler;
         };
         std::vector<Route> routes;
+        std::map<std::string, std::vector<RequestHandler>> middlewares;
 
         Router();
 

@@ -8,57 +8,71 @@
 #include <LittleFS.h>
 
 #include <ArduinoJson.h>
-#include <jsonFileHandler.h>
+#include <vector>
+#include <string>
 
 namespace EspWeb
 {
+    struct FileInfo
+    {
+        int isDirectory;
+        std::string name;
+        std::string path;
+        std::string extension;
+        std::string baseName;
+    };
+
+    class FileHandler
+    {
+    private:
+        std::string _tempFolder = "/tmp";
+
+    public:
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Helper Methods
+         *
+         **/
+
+        std::string getTempFolder();
+        std::string getTempFile();
+        std::string randomString(int size = 32);
+        FileInfo getInfo(const std::string &path);
+        bool exists(const std::string &path);
+
+        std::string trim(const std::string &s);
+        std::vector<std::string> split(const std::string &text, const std::string &splitter);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Folder and Folder Contents
+         *
+         **/
+
+        std::vector<FileInfo> listFiles(const std::string &path);
+        void clearFolder(const std::string &path);
+        void removeFolder(const std::string &path);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Handle Files
+         *
+         **/
+
+        bool removeFile(const std::string &path);
+        bool moveFile(const std::string &path, const std::string &destination);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Read and write JSON
+         *
+         **/
+
+        JsonDocument readJson(const std::string &path);
+        void writeJson(const std::string &path, const JsonDocument &doc);
+    };
+
+    extern FileHandler fileHandler;
     extern std::string FOLDER_TEMP;
     extern std::string FOLDER_WEB;
-
-    using FileInfo = JsonFileHandler::Info;
-
-    std::string getTempFolder();
-    FileInfo getFileInfo(const std::string &filePath);
-    bool fileExists(const std::string &filePath);
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Helper Methods
-     *
-     **/
-
-    std::string randomString(int size = 32);
-    std::string trim(const std::string &s);
-
-    size_t findBytes(const std::vector<uint8_t> &data, const std::string &pattern, size_t start = 0);
-    std::string extractString(const std::vector<uint8_t> &data, size_t start, size_t end);
-    std::vector<std::string> split(const std::string &text, const std::string &splitter);
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Folder and Folder Contents
-     *
-     **/
-
-    std::vector<FileInfo> listFiles(const std::string &folderPath);
-    void clearFolder(const std::string &folderPath);
-    void removeFolder(const std::string &folderPath);
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Handle Files
-     *
-     **/
-
-    int removeFile(const std::string &filePath);
-
-    /*-------------------------------------------------------------------------------------------------
-     *
-     * Read and write JSON
-     *
-     **/
-
-    JsonDocument readJsonFile(const std::string &filePath);
-    bool writeJsonFile(const std::string &filePath, const JsonDocument &doc);
-
 }

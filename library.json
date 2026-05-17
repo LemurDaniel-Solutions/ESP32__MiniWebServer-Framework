@@ -2,7 +2,13 @@
   "name": "ESP32MiniWebServer",
   "version": "1.0.0",
   "description": "Lightweight web server framework for ESP32 with built-in admin dashboard, WiFi management, and OTA updates.",
-  "keywords": ["esp32", "webserver", "http", "rest", "wifi"],
+  "keywords": [
+    "esp32",
+    "webserver",
+    "http",
+    "rest",
+    "wifi"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/LemurDaniel/ESP32__MiniWebServer-Framework"
@@ -17,14 +23,22 @@
   "frameworks": "arduino",
   "platforms": "espressif32",
   "dependencies": {
-    "bblanchon/ArduinoJson": "~7.4.3",
-    "https://github.com/LemurDaniel-Solutions/ESP32__JsonFileHandler": "1.0.2"
+    "bblanchon/ArduinoJson": "~7.4.3"
   },
   "build": {
     "srcDir": "lib/server",
-     "flags": ["-Os"]
+    "flags": [
+      "-Os"
+    ]
   },
   "export": {
-    "exclude": ["src", "data", "test", ".assets", ".pio", ".vscode"]
+    "exclude": [
+      "src",
+      "data",
+      "test",
+      ".assets",
+      ".pio",
+      ".vscode"
+    ]
   }
 }

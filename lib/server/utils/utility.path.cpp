@@ -29,7 +29,7 @@ namespace EspWeb
      **/
     std::vector<RequestHandler> PathNode::resolve(const std::string &path, Request &req, bool accumulate)
     {
-        std::vector<std::string> segments = split(path, "/");
+        std::vector<std::string> segments = fileHandler.split(path, "/");
         std::vector<std::string> reversed;
         while (segments.size() > 0)
         {
@@ -89,7 +89,7 @@ namespace EspWeb
 
     void PathNode::add(const std::string &path, const std::vector<RequestHandler> &handlers)
     {
-        std::vector<std::string> segments = split(path, "/");
+        std::vector<std::string> segments = fileHandler.split(path, "/");
         std::vector<std::string> reversed;
         while (segments.size() > 0)
         {

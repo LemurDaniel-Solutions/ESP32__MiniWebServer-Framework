@@ -168,20 +168,20 @@ namespace EspWeb
             return request;
 
         // Split: "GET /path HTTP/1.1"
-        std::vector<std::string> firstLine = split(headerRaw[0], " ");
+        std::vector<std::string> firstLine = fileHandler.split(headerRaw[0], " ");
         request.method = firstLine[0];
         request.path = firstLine[1];
 
         // Reading URL Parameters
         if (request.path.find("?") != std::string::npos)
         {
-            const std::vector<std::string> &segments = split(request.path, "?");
+            const std::vector<std::string> &segments = fileHandler.split(request.path, "?");
             request.path = segments[0];
 
-            const std::vector<std::string> &query = split(segments[1], "&");
+            const std::vector<std::string> &query = fileHandler.split(segments[1], "&");
             for (const std::string &param : query)
             {
-                const std::vector<std::string> &pair = split(param, "=");
+                const std::vector<std::string> &pair = fileHandler.split(param, "=");
                 request.query.insert({pair[0], pair[1]});
             }
         }
@@ -189,7 +189,7 @@ namespace EspWeb
         // Reading headers
         for (size_t i = 1; i < headerRaw.size(); i++)
         {
-            std::vector<std::string> line = split(headerRaw[i], ":");
+            std::vector<std::string> line = fileHandler.split(headerRaw[i], ":");
             if (line.size() >= 2)
                 request.headers[line[0]] = line[1];
         }
@@ -197,10 +197,10 @@ namespace EspWeb
         // Parsing Cookie Header
         if (request.headers.find("Cookie") != request.headers.end())
         {
-            std::vector<std::string> cookieHeader = split(request.headers["Cookie"], ";");
+            std::vector<std::string> cookieHeader = fileHandler.split(request.headers["Cookie"], ";");
             for (size_t i = 0; i < cookieHeader.size(); i++)
             {
-                std::vector<std::string> line = split(cookieHeader[i], "=");
+                std::vector<std::string> line = fileHandler.split(cookieHeader[i], "=");
                 if (line.size() >= 2)
                     request.cookies[line[0]] = line[1];
             }
