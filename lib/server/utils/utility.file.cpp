@@ -23,6 +23,11 @@ namespace EspWeb
     FileInfo getFileInfo(const std::string &filePath)
     {
         File file = LittleFS.open(filePath.c_str(), "r");
+        if (!file)
+        {
+            Serial.printf("❌ CRITICAL: Failed to open file %s!\n", filePath.c_str());
+            return FileInfo();
+        }
 
         FileInfo info;
         info.isDirectory = file.isDirectory();
@@ -156,6 +161,7 @@ namespace EspWeb
                 std::string path = entry.path();
                 entry.close();
                 removeFolder(path);
+                entry = dir.openNextFile();
             }
             else
             {
