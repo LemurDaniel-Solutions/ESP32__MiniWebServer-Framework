@@ -772,8 +772,9 @@ namespace EspWeb
                 <input id="upload-website-picker" type="file" webkitdirectory directory multiple />
                 <h3 id="display-upload-folder">Select Folder to upload</h3>
             </label>
-            <progress id="upload-website-progress" max="100" hidden></progress>
-            <p style="margin-bottom:10px;"><strong id="new-token-name"></strong></p>
+            <div class="btn-row">
+                <progress id="upload-website-progress" max="100" hidden></progress>
+            </div>
             <div class="btn-row">
                 <button id="btn-upload-webiste-close" onclick="closeModal('modal-upload-website')"
                     class="btn btn-sm btn-secondary">Close</button>

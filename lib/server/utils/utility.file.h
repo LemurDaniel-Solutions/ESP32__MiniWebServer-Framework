@@ -8,23 +8,14 @@
 #include <LittleFS.h>
 
 #include <ArduinoJson.h>
-
-#include <string>
-#include <vector>
+#include <jsonFileHandler.h>
 
 namespace EspWeb
 {
     extern std::string FOLDER_TEMP;
     extern std::string FOLDER_WEB;
 
-    struct FileInfo
-    {
-        int isDirectory;
-        std::string name;
-        std::string path;
-        std::string extension;
-        std::string baseName;
-    };
+    using FileInfo = JsonFileHandler::Info;
 
     std::string getTempFolder();
     FileInfo getFileInfo(const std::string &filePath);

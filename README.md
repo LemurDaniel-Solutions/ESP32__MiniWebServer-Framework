@@ -885,3 +885,84 @@ Pass `0` to disable the timeout entirely.
 
 ---
 
+<details>
+<summary>📁 File Handling (LittleFS)</summary>
+
+File handling is available through the static `Router::fs` member inside any `Router` subclass (no server reference needed). It wraps the `JsonFileHandler` library on top of LittleFS.
+
+### JSON files
+
+```cpp
+// Read
+JsonDocument cfg = Router::fs.readJson("/config.json");
+const char* name = cfg["name"];
+
+// Write
+JsonDocument out;
+out["status"] = "ok";
+Router::fs.writeJson("/config.json", out);
+```
+
+### Filesystem operations
+
+```cpp
+// Check existence
+bool ok = Router::fs.exists("/config.json");
+
+// List contents of a folder
+std::vector<EspWeb::FileInfo> files = Router::fs.listFiles("/data");
+for (const auto &f : files)
+    Serial.println(f.path.c_str());
+
+// Move a file
+Router::fs.moveFile("/tmp/upload", "/data/file.bin");
+
+// Delete a file
+Router::fs.removeFile("/data/old.json");
+
+// Clear folder contents (keeps the folder)
+Router::fs.clearFolder("/tmp");
+
+// Delete folder and all its contents
+Router::fs.removeFolder("/cache");
+```
+
+### Temp files
+
+Use temp paths as a staging area before moving files into place:
+
+```cpp
+std::string tmpPath = Router::fs.getTempFile().c_str();
+// … write to tmpPath …
+Router::fs.moveFile(tmpPath, "/data/result.bin");
+```
+
+### API reference
+
+| Method | Description |
+|--------|-------------|
+| `fs.readJson(path)` | Read a JSON file → `JsonDocument` |
+| `fs.writeJson(path, doc)` | Write a `JsonDocument` to a JSON file |
+| `fs.exists(path)` | Check whether a file or folder exists |
+| `fs.listFiles(path)` | List all entries in a folder → `vector<FileInfo>` |
+| `fs.moveFile(src, dst)` | Move or rename a file |
+| `fs.removeFile(path)` | Delete a file |
+| `fs.clearFolder(path)` | Delete all contents of a folder, keep the folder |
+| `fs.removeFolder(path)` | Delete a folder and all its contents |
+| `fs.getTempFolder()` | Path of the temp folder (`/temp`) |
+| `fs.getTempFile()` | Path of a new uniquely-named temp file |
+
+`FileInfo` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `String` | Filename (e.g. `config.json`) |
+| `path` | `String` | Full path (e.g. `/data/config.json`) |
+| `baseName` | `String` | Name without extension |
+| `extension` | `String` | Extension without dot (e.g. `json`) |
+| `isDirectory` | `int` | Non-zero if the entry is a directory |
+
+</details>
+
+---
+

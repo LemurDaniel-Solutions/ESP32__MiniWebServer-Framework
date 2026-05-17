@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <functional>
+#include <jsonFileHandler.h>
 
 #include <router/request.h>
 #include <router/response.h>
@@ -23,6 +23,7 @@ namespace EspWeb
     class Router
     {
     public:
+        static JsonFileHandler::JsonFileHandler fs;
         std::map<std::string, std::vector<RequestHandler>> middlewares;
 
         struct Route
@@ -61,19 +62,6 @@ namespace EspWeb
 
         static bool isApiTokenValid(Request &req);
         static bool isSessionTokenValid(Request &req);
-
-        /*-------------------------------------------------------------------------------------------------
-         *
-         * Make file Handleing available in Router
-         *
-         **/
-
-        static void clearFolder(const std::string &folderPath);
-        static void removeFolder(const std::string &folderPath);
-        static void removeFile(const std::string &filePath);
-
-        static JsonDocument readJsonFile(const std::string &filePath);
-        static bool writeJsonFile(const std::string &filePath, const JsonDocument &doc);
     };
 
 }
