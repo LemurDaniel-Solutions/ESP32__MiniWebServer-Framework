@@ -84,4 +84,35 @@ namespace EspWeb
         TokenManager::instance().removeApiToken(name);
     }
 
+    /*-------------------------------------------------------------------------------------------------
+     *
+     * Make file Handleing available in Router
+     *
+     **/
+
+    void Router::clearFolder(const std::string &folderPath)
+    {
+        EspWeb::clearFolder(folderPath);
+    }
+
+    void Router::removeFolder(const std::string &folderPath)
+    {
+        EspWeb::removeFolder(folderPath);
+    }
+
+    void Router::removeFile(const std::string &filePath)
+    {
+        EspWeb::removeFile(filePath);
+    }
+
+    JsonDocument Router::readJsonFile(const std::string &filePath)
+    {
+        return EspWeb::readJsonFile(filePath);
+    }
+
+    bool Router::writeJsonFile(const std::string &filePath, const JsonDocument &doc)
+    {
+        return EspWeb::writeJsonFile(filePath, doc);
+    }
+
 }

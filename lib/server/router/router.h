@@ -61,6 +61,19 @@ namespace EspWeb
 
         static bool isApiTokenValid(Request &req);
         static bool isSessionTokenValid(Request &req);
+
+        /*-------------------------------------------------------------------------------------------------
+         *
+         * Make file Handleing available in Router
+         *
+         **/
+
+        void clearFolder(const std::string &folderPath);
+        void removeFolder(const std::string &folderPath);
+        void removeFile(const std::string &filePath);
+
+        JsonDocument readJsonFile(const std::string &filePath);
+        bool writeJsonFile(const std::string &filePath, const JsonDocument &doc);
     };
 
 }
