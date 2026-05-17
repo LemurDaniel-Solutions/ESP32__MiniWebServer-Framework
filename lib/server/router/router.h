@@ -68,12 +68,12 @@ namespace EspWeb
          *
          **/
 
-        void clearFolder(const std::string &folderPath);
-        void removeFolder(const std::string &folderPath);
-        void removeFile(const std::string &filePath);
+        static void clearFolder(const std::string &folderPath);
+        static void removeFolder(const std::string &folderPath);
+        static void removeFile(const std::string &filePath);
 
-        JsonDocument readJsonFile(const std::string &filePath);
-        bool writeJsonFile(const std::string &filePath, const JsonDocument &doc);
+        static JsonDocument readJsonFile(const std::string &filePath);
+        static bool writeJsonFile(const std::string &filePath, const JsonDocument &doc);
     };
 
 }
