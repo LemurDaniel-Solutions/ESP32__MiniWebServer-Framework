@@ -145,7 +145,7 @@ namespace EspWeb
     {
         if (prefix[0] != '/')
         {
-            _middlewares.add(prefix, {handler});
+            _middlewares.add('/' + prefix, {handler});
         }
         else
         {
@@ -238,9 +238,15 @@ namespace EspWeb
     {
         Serial.printf("Adding file response: %s -> %s\n", path.c_str(), file_path.c_str());
 
-        const RequestHandler &handler = [file_path](const EspWeb::Request &req, EspWeb::Response &res)
+        std::string normalizedPath = file_path;
+        if (normalizedPath[0] != '/')
         {
-            res.file(file_path);
+            normalizedPath = '/' + normalizedPath;
+        }
+
+        const RequestHandler &handler = [normalizedPath](const EspWeb::Request &req, EspWeb::Response &res)
+        {
+            res.file(normalizedPath);
         };
 
         addRoute("GET", path, handler);
