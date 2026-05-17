@@ -17,7 +17,8 @@
   "frameworks": "arduino",
   "platforms": "espressif32",
   "dependencies": {
-    "bblanchon/ArduinoJson": "~7.4.3"
+    "bblanchon/ArduinoJson": "~7.4.3",
+    "https://github.com/LemurDaniel-Solutions/ESP32__JsonFileHandler": "1.0.2"
   },
   "build": {
     "srcDir": "lib/server",
