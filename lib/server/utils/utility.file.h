@@ -59,7 +59,6 @@ namespace EspWeb
      *
      **/
 
-    void moveFile(const std::string &filePath, const std::string &destinationFolder, const std::string &relativePath = "");
     int removeFile(const std::string &filePath);
 
     /*-------------------------------------------------------------------------------------------------

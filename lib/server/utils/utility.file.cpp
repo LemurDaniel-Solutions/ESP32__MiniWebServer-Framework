@@ -179,26 +179,6 @@ namespace EspWeb
      * Handle Files
      *
      **/
-    void moveFile(const std::string &filePath, const std::string &destinationFolder, const std::string &relativePath)
-    {
-        if (!fileExists(filePath))
-        {
-            Serial.printf("❌ CRITICAL: Failed to move file %s!\n", filePath.c_str());
-            return;
-        }
-
-        const FileInfo &info = getFileInfo(filePath);
-        std::string destinationPath = destinationFolder + "/" + info.name;
-
-        if (!relativePath.empty())
-        {
-            std::string suffix = filePath.substr(relativePath.size());
-            std::string newPath = destinationFolder + suffix;
-        }
-
-        Serial.printf("ℹ️ Move from %s to %s", filePath.c_str(), destinationPath.c_str());
-        // LittleFS.rename(filePath.c_str(), destinationPath.c_str());
-    }
 
     int removeFile(const std::string &filePath)
     {
