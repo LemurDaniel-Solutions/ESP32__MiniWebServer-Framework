@@ -27,8 +27,6 @@
 
 namespace EspWeb
 {
-
-    const int WORKER_TASK_COUNT = 4;
     const int CONNECTION_LIMIT = 10;
     const int CONNECTION_TIMEOUT_SEC = 30;
 
@@ -37,15 +35,15 @@ namespace EspWeb
     private:
         std::string _dnsName;
         struct sockaddr_in _address;
-        unsigned int _address_len;
-        int _server_socket;
+        unsigned int _addressLen;
+        int _serverSocket;
         void closeServer();
 
     public:
         MiniServer();
         ~MiniServer();
 
-        int start(const int port, const std::string &ip_addr = "0.0.0.0");
+        int start(const int port, const std::string &ipAddr = "0.0.0.0", int workerCount = 3);
         void dns(const std::string &dnsName);
 
         // Connect to WiFi network via SSID (Name of WiFi) and password
@@ -54,7 +52,7 @@ namespace EspWeb
         void clearWiFi();
 
         // Add a static file response for a specific path
-        void staticFile(const std::string &path, const std::string &file_path);
+        void staticFile(const std::string &path, const std::string &filePath);
 
         // Register routes with method, path and handler function
         void registerRouter(const EspWeb::Router &router);
@@ -73,15 +71,15 @@ namespace EspWeb
         void defaultAdminCredentials(const std::string &username, const std::string &password);
 
     public:
-        void setCustomLink(const std::string &name, const std::string &href);  
+        void setCustomLink(const std::string &name, const std::string &href);
         void setTokenActions(const std::vector<std::string> &actions);
 
     private:
-        int _is_running = false;
-        int _is_root_set = false;
-        int _is_index_set = false;
-        int _is_admin_enabled = true;
-        int _is_dashboard_enabled = true;
+        int _isRunning = false;
+        int _isRootSet = false;
+        int _isIndexSet = false;
+        int _isAdminEnabled = true;
+        int _isDashboardEnabled = true;
 
     public:
         // Disables the admin dashboard entirly
@@ -89,13 +87,13 @@ namespace EspWeb
         void disableAdminDashboard();
 
         // Serve a static file as index.html on the root path
-        void index(const std::string &index_path);
+        void index(const std::string &indexPath);
         // Serve all files in there as root;
-        void root(const std::string &folder_path, const std::string &prefix = "/");
+        void root(const std::string &folderPath, const std::string &prefix = "/");
 
     private:
         void processHandlers(Request &req, Response &res);
-        void handleClient(int client_socket);
+        void handleClient(int clientSocket);
 
         // Map of "METHOD PATH" to handler function for dynamic routes
         PathResolver _routes;

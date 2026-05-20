@@ -22,7 +22,7 @@ namespace EspWeb
         int finalized = false;
 
         // HTTP status code for the response (e.g., 200 for OK, 404 for Not Found)
-        int status_code = 200;
+        int statusCode = 200;
 
         // Custom headers to include in the response
         std::map<std::string, std::string> headers;

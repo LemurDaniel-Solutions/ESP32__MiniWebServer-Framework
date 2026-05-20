@@ -25,9 +25,9 @@ namespace EspWeb
         std::string header;
         header.reserve(512);
         header = "HTTP/1.1 ";
-        header += std::to_string(status_code);
+        header += std::to_string(statusCode);
         header += " ";
-        switch (status_code)
+        switch (statusCode)
         {
         case 200:
             header += "OK";
@@ -203,7 +203,7 @@ namespace EspWeb
         {
             this->text("OK");
         }
-        this->status_code = 200;
+        this->statusCode = 200;
         return *this;
     }
 
@@ -213,7 +213,7 @@ namespace EspWeb
         {
             this->text("Not Found");
         }
-        this->status_code = 404;
+        this->statusCode = 404;
         return *this;
     }
 
@@ -221,7 +221,7 @@ namespace EspWeb
     {
         if (this->body.empty())
             this->text("Created");
-        this->status_code = 201;
+        this->statusCode = 201;
         return *this;
     }
 
@@ -229,7 +229,7 @@ namespace EspWeb
     {
         if (this->body.empty())
             this->text("Bad Request");
-        this->status_code = 400;
+        this->statusCode = 400;
         return *this;
     }
 
@@ -237,7 +237,7 @@ namespace EspWeb
     {
         if (this->body.empty())
             this->text("Unauthorized");
-        this->status_code = 401;
+        this->statusCode = 401;
         return *this;
     }
 
@@ -245,7 +245,7 @@ namespace EspWeb
     {
         if (this->body.empty())
             this->text("Forbidden");
-        this->status_code = 403;
+        this->statusCode = 403;
         return *this;
     }
 
@@ -253,20 +253,20 @@ namespace EspWeb
     {
         if (this->body.empty())
             this->text("Internal Server Error");
-        this->status_code = 500;
+        this->statusCode = 500;
         return *this;
     }
 
     Response &Response::Redirect(const std::string &location)
     {
         this->header("Location", location);
-        this->status_code = 302;
+        this->statusCode = 302;
         return *this;
     }
 
     Response &Response::status(int status)
     {
-        this->status_code = status;
+        this->statusCode = status;
         return *this;
     }
 

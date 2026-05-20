@@ -139,9 +139,9 @@ namespace EspWeb
 
     void TokenManager::setCredentials(const std::string &username, const std::string &password)
     {
-        const std::string password_hash = generateSHA256(password);
+        const std::string passwordHash = generateSHA256(password);
         setValue("admin_user", username);
-        setValue("admin_pwd", password_hash);
+        setValue("admin_pwd", passwordHash);
     }
 
     bool TokenManager::checkCredentials(const std::string &username, const std::string &password)

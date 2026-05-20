@@ -23,7 +23,7 @@ namespace EspWeb
 
     void MiniServer::closeServer()
     {
-        close(_server_socket);
+        close(_serverSocket);
     }
 
     void MiniServer::connectWiFi(const std::string &ssid, const std::string &password)
@@ -59,12 +59,12 @@ namespace EspWeb
 
     void MiniServer::disableAdmin()
     {
-        _is_admin_enabled = false;
+        _isAdminEnabled = false;
         disableAdminDashboard();
     }
     void MiniServer::disableAdminDashboard()
     {
-        _is_dashboard_enabled = false;
+        _isDashboardEnabled = false;
     }
 
     void MiniServer::dns(const std::string &dnsName)
@@ -79,17 +79,17 @@ namespace EspWeb
      *
      **/
 
-    void MiniServer::handleClient(int client_socket)
+    void MiniServer::handleClient(int clientSocket)
     {
-        Response response = Response(client_socket);
+        Response response = Response(clientSocket);
 
         // Parse the raw HTTP request into a structured Request object
-        Request request = Request::parse(client_socket);
+        Request request = Request::parse(clientSocket);
         if (request.rejected)
         {
             response.status(413).text(request.error).send();
             struct linger sl = {1, 0};
-            setsockopt(client_socket, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
+            setsockopt(clientSocket, SOL_SOCKET, SO_LINGER, &sl, sizeof(sl));
             return;
         }
 
@@ -234,11 +234,11 @@ namespace EspWeb
      *
      **/
 
-    void MiniServer::staticFile(const std::string &path, const std::string &file_path)
+    void MiniServer::staticFile(const std::string &path, const std::string &filePath)
     {
-        Serial.printf("Adding file response: %s -> %s\n", path.c_str(), file_path.c_str());
+        Serial.printf("Adding file response: %s -> %s\n", path.c_str(), filePath.c_str());
 
-        std::string normalizedPath = file_path;
+        std::string normalizedPath = filePath;
         if (normalizedPath[0] != '/')
         {
             normalizedPath = '/' + normalizedPath;
@@ -252,11 +252,11 @@ namespace EspWeb
         addRoute("GET", path, handler);
     }
 
-    void MiniServer::root(const std::string &folder_path, const std::string &prefix)
+    void MiniServer::root(const std::string &folderPath, const std::string &prefix)
     {
-        _is_root_set = true;
-        FOLDER_WEB = folder_path;
-        std::vector<FileInfo> files = fileHandler.listFiles(folder_path);
+        _isRootSet = true;
+        FOLDER_WEB = folderPath;
+        std::vector<FileInfo> files = fileHandler.listFiles(folderPath);
         for (FileInfo info : files)
         {
             if (info.isDirectory)
@@ -270,12 +270,12 @@ namespace EspWeb
         }
     }
 
-    void MiniServer::index(const std::string &index_path)
+    void MiniServer::index(const std::string &indexPath)
     {
-        _is_index_set = true;
-        staticFile("/", index_path);
-        staticFile("/index", index_path);
-        staticFile("/index.html", index_path);
+        _isIndexSet = true;
+        staticFile("/", indexPath);
+        staticFile("/index", indexPath);
+        staticFile("/index.html", indexPath);
     }
 
     /*-------------------------------------------------------------------------------------------------
@@ -287,31 +287,31 @@ namespace EspWeb
     {
 
         MiniServer *server = static_cast<MiniServer *>(param);
-        int client_socket;
+        int clientSocket;
 
         while (true)
         {
             // Hier wartet der Task, verbraucht 0% CPU währenddessen
-            if (xQueueReceive(server->_handleQueue, &client_socket, portMAX_DELAY))
+            if (xQueueReceive(server->_handleQueue, &clientSocket, portMAX_DELAY))
             {
                 // --- TIMEOUT SETUP START ---
                 struct timeval tv;
                 tv.tv_sec = CONNECTION_TIMEOUT_SEC;
                 tv.tv_usec = 0;
 
-                setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-                setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+                setsockopt(clientSocket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+                setsockopt(clientSocket, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 
                 // --- TIMEOUT SETUP END ---
                 Serial.println("--------------------------------------------------------------------");
-                Serial.printf("Worker handling client on socket %d\n", client_socket);
+                Serial.printf("Worker handling client on socket %d\n", clientSocket);
 
-                server->handleClient(client_socket);
+                server->handleClient(clientSocket);
 
-                Serial.printf("Worker finished handling client on socket %d\n", client_socket);
+                Serial.printf("Worker finished handling client on socket %d\n", clientSocket);
                 Serial.println("--------------------------------------------------------------------");
-                shutdown(client_socket, SHUT_RDWR);
-                close(client_socket);
+                shutdown(clientSocket, SHUT_RDWR);
+                close(clientSocket);
             }
         }
     }
@@ -319,47 +319,47 @@ namespace EspWeb
     void MiniServer::acceptClientTask(void *param)
     {
         MiniServer *server = static_cast<MiniServer *>(param);
-        const int server_socket = server->_server_socket;
+        const int serverSocket = server->_serverSocket;
 
         while (true)
         {
-            struct sockaddr_in client_addr;
-            socklen_t len = sizeof(client_addr);
+            struct sockaddr_in clientAddr;
+            socklen_t len = sizeof(clientAddr);
 
-            int client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &len);
+            int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &len);
 
-            if (client_socket < 0)
+            if (clientSocket < 0)
             {
                 Serial.println("Failed to accept client connection");
                 return;
             }
 
-            Serial.printf("Accepted new client on socket %d\n", client_socket);
+            Serial.printf("Accepted new client on socket %d\n", clientSocket);
 
-            if (xQueueSend(server->_handleQueue, &client_socket, 0) != pdTRUE)
+            if (xQueueSend(server->_handleQueue, &clientSocket, 0) != pdTRUE)
             {
                 Serial.println("Queue full! Rejecting new client.");
-                write(client_socket, "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 19\r\n\r\nService Unavailable", 75);
-                close(client_socket);
+                write(clientSocket, "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 19\r\n\r\nService Unavailable", 75);
+                close(clientSocket);
             }
         }
     }
 
-    int MiniServer::start(int port, const std::string &ip_addr)
+    int MiniServer::start(int port, const std::string &ipAddr, int workerCount)
     {
 
-        if (_is_running)
+        if (_isRunning)
         {
             Serial.println("Server is already running");
             return 0;
         }
 
-        if (_is_admin_enabled)
+        if (_isAdminEnabled)
         {
-            this->registerRouter(EspWeb::AdminRouter(_is_dashboard_enabled));
+            this->registerRouter(EspWeb::AdminRouter(_isDashboardEnabled));
         }
 
-        if (!_is_root_set && !_is_index_set)
+        if (!_isRootSet && !_isIndexSet)
         {
             this->root(FOLDER_WEB);
             this->index(FOLDER_WEB + "/" + "index.html");
@@ -373,34 +373,34 @@ namespace EspWeb
         memset(&_address, 0, sizeof(_address));
         _address.sin_family = AF_INET;
         _address.sin_port = htons(port);
-        _address_len = sizeof(_address);
-        if (inet_pton(AF_INET, ip_addr.c_str(), &_address.sin_addr) <= 0)
+        _addressLen = sizeof(_address);
+        if (inet_pton(AF_INET, ipAddr.c_str(), &_address.sin_addr) <= 0)
         {
             Serial.println("Invalid IP address");
             return 1;
         }
 
-        _server_socket = socket(AF_INET, SOCK_STREAM, 0);
-        if (_server_socket < 0)
+        _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+        if (_serverSocket < 0)
         {
             Serial.println("Failed to create socket");
             return 1;
         }
 
         int opt = 1;
-        if (setsockopt(_server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+        if (setsockopt(_serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
         {
             Serial.println("Failed to set socket options");
             return 1;
         }
 
-        if (bind(_server_socket, (struct sockaddr *)&_address, sizeof(_address)) < 0)
+        if (bind(_serverSocket, (struct sockaddr *)&_address, sizeof(_address)) < 0)
         {
             Serial.println("Failed to bind socket");
             return 1;
         }
 
-        if (listen(_server_socket, 3) < 0)
+        if (listen(_serverSocket, 3) < 0)
         {
             Serial.println("Failed to listen on socket");
             return 1;
@@ -427,7 +427,7 @@ namespace EspWeb
         }
 
         Serial.println("Starting worker tasks...");
-        for (int i = 0; i < EspWeb::WORKER_TASK_COUNT; i++)
+        for (int i = 0; i < workerCount; i++)
         {
             std::string taskName = "worker" + std::to_string(i);
             xTaskCreatePinnedToCore(workerTask, taskName.c_str(), 8192, this, 1, NULL, i % 2);
@@ -440,7 +440,7 @@ namespace EspWeb
         xTaskCreate(WiFiUtility::wifiManagerTask, "WiFiManager", 4096, nullptr, 1, nullptr);
 
         Serial.println("Server started and listening for clients...");
-        _is_running = true;
+        _isRunning = true;
         return 0;
     }
 
