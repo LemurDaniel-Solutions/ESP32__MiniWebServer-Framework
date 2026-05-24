@@ -3,6 +3,7 @@
 #include <MiniServer.h>
 
 #include <routes/routes.example.h>
+#include <morseCode/router.h>
 
 void setup()
 {
@@ -36,6 +37,9 @@ void setup()
   Server->setCustomLink("custom", "/custom");
 
   Server->registerRouter(routes_example::Router());
+
+  // Some test examples
+  Server->registerRouter(morseCode::Router());
 
   Server->start(80);
 }
