@@ -400,7 +400,7 @@ namespace EspWeb
             return 1;
         }
 
-        if (listen(_serverSocket, 3) < 0)
+        if (listen(_serverSocket, CONNECTION_LIMIT) < 0)
         {
             Serial.println("Failed to listen on socket");
             return 1;
