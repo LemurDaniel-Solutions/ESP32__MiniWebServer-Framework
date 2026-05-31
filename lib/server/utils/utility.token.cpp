@@ -13,32 +13,34 @@ namespace EspWeb
      *
      **/
 
-    Token::Token(std::string name, std::string value, std::vector<std::string> action)
-    {
-        this->name = name;
-        this->value = value;
-        this->action = action;
-    }
-
     Token Token::NullToken()
     {
-        Token token("", "", {});
+        Token token;
         token._isValid = false;
         return token;
     }
 
-    Token Token::getSessionToken(long durationSeconds, const std::vector<std::string> &action)
+    Token Token::createSessionToken(long durationSeconds, const std::vector<std::string> &action)
     {
         std::string value = TokenManager::instance().generateSHA256(fileHandler.randomString());
-        Token token("Session Token", value, action);
+        Token token;
+        token.name = "Session Token";
+        token.value = value;
+        token.action = action;
         token._expires = ::millis() / 1000 + durationSeconds;
+        token._isSessionToken = true;
         return token;
     }
 
-    Token Token::getApiToken(const std::string &name, const std::vector<std::string> &action)
+    Token Token::createApiToken(const std::string &name, const std::vector<std::string> &action)
     {
         std::string value = TokenManager::instance().generateSHA256(fileHandler.randomString());
-        return Token(name, value, action);
+        Token token;
+        token.name = name;
+        token.value = value;
+        token.action = action;
+        token._isApiToken = true;
+        return token;
     }
 
     const long Token::expires() { return _expires; }
@@ -164,14 +166,13 @@ namespace EspWeb
 
     Token TokenManager::getSessionToken(long seconds, const std::vector<std::string> &actions)
     {
-        Token token = Token::getSessionToken(seconds, actions);
+        Token token = Token::createSessionToken(seconds, actions);
         _SESSION_TOKENS.insert({token.value, token});
         return token;
     }
 
     Token TokenManager::checkToken(const std::string &authToken)
     {
-
         // Session Token check
         long currentTime = millis() / 1000;
         auto entry = _SESSION_TOKENS.find(authToken);
@@ -187,7 +188,7 @@ namespace EspWeb
             }
         }
 
-        // API Token Check
+        // API Token check
         if (_API_TOKENS == nullptr)
             listApiTokens();
 
@@ -207,7 +208,7 @@ namespace EspWeb
      **/
     Token TokenManager::getApiToken(const std::string &name, const std::vector<std::string> &action)
     {
-        const Token &token = Token::getApiToken(name, action);
+        const Token token = Token::createApiToken(name, action);
 
         JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
 
@@ -247,10 +248,11 @@ namespace EspWeb
                 for (JsonVariant v : kv.value()["action"].as<JsonArray>())
                     actions.push_back(v.as<std::string>());
 
-                Token token(
-                    kv.key().c_str(),
-                    kv.value()["value"].as<std::string>(),
-                    actions);
+                Token token;
+                token.name = kv.key().c_str();
+                token.value = kv.value()["value"].as<std::string>();
+                token.action = actions;
+                token._isApiToken = true;
 
                 (*_API_TOKENS).insert({token.value, token});
             }

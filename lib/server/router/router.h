@@ -125,20 +125,6 @@ namespace EspWeb
          * @param name Name of the API token to remove.
          */
         static void removeApiToken(const std::string &name);
-
-        /**
-         * @brief Checks whether the request carries a valid API token.
-         * @param req Incoming request to inspect.
-         * @return `true` if a valid API token is present, `false` otherwise.
-         */
-        static bool isApiTokenValid(Request &req);
-
-        /**
-         * @brief Checks whether the request carries a valid session token.
-         * @param req Incoming request to inspect.
-         * @return `true` if a valid session token is present, `false` otherwise.
-         */
-        static bool isSessionTokenValid(Request &req);
     };
 
 }

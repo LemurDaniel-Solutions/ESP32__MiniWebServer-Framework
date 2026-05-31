@@ -41,6 +41,8 @@ namespace EspWeb
      */
     class Token
     {
+        friend class TokenManager;
+
     private:
         /** @brief False if the token was explicitly invalidated or never initialized. */
         bool _isValid = true;
@@ -48,38 +50,37 @@ namespace EspWeb
         /** @brief Unix timestamp when the token expires; -1 for non-expiring API tokens. */
         long _expires = -1;
 
+        /** @brief True if this is a session token (time-limited, stored in memory). */
+        bool _isSessionToken = false;
+
+        /** @brief True if this is a permanent API token (no expiry, stored in LittleFS). */
+        bool _isApiToken = false;
+
+
     public:
+        Token() = default;
+
         /**
          * @brief Creates an invalid placeholder token.
          * @return A Token where isValid() returns false.
          */
         static Token NullToken();
 
-        Token() = default;
-
         /**
-         * @brief Constructs a token with a name, value, and optional action list.
-         * @param name   Identifier for the token (e.g. the API token name).
-         * @param value  The raw token string.
-         * @param action List of permitted action names (default: empty = no actions).
+         * @brief Creates a time-limited session token with a generated random value.
+         * @param seconds Lifetime in seconds from now.
+         * @param action  List of permitted action names.
+         * @return A new Token with `_isSessionToken = true`.
          */
-        Token(std::string name, std::string value, std::vector<std::string> action = {});
+        static Token createSessionToken(long seconds, const std::vector<std::string> &action);
 
         /**
-         * @brief Issues a new time-limited session token and stores it in memory.
-         * @param seconds  Lifetime of the token in seconds from now.
-         * @param action   List of permitted action names.
-         * @return The newly created session Token.
-         */
-        static Token getSessionToken(long seconds, const std::vector<std::string> &action);
-
-        /**
-         * @brief Creates or retrieves a named permanent API token stored in LittleFS.
+         * @brief Creates a permanent API token with a generated random value.
          * @param name   Human-readable identifier for the token.
          * @param action List of permitted action names.
-         * @return The API Token.
+         * @return A new Token with `_isApiToken = true`.
          */
-        static Token getApiToken(const std::string &name, const std::vector<std::string> &action);
+        static Token createApiToken(const std::string &name, const std::vector<std::string> &action);
 
         /** @brief List of action names this token is authorized for. */
         std::vector<std::string> action;
@@ -107,6 +108,12 @@ namespace EspWeb
          * @return `true` if valid.
          */
         bool isValid();
+
+        /** @brief Returns `true` if this is a session token (time-limited, stored in memory). */
+        bool isSessionToken() { return _isSessionToken; }
+
+        /** @brief Returns `true` if this is a permanent API token (no expiry, stored in LittleFS). */
+        bool isApiToken() { return _isApiToken; }
 
         /**
          * @brief Checks whether this token is authorized for a specific action.
