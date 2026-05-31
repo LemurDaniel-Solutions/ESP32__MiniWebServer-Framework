@@ -155,7 +155,7 @@ namespace EspWeb
      *
      **/
 
-    void TokenManager::removeToken(const std::string &token)
+    void TokenManager::removeSessionToken(const std::string &token)
     {
         auto it = _SESSION_TOKENS.find(token);
         if (it != _SESSION_TOKENS.end())

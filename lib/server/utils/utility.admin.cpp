@@ -1081,7 +1081,7 @@ namespace EspWeb
 
         if (entry != req.cookies.end())
         {
-            TokenManager::instance().removeToken(entry->second);
+            TokenManager::instance().removeSessionToken(entry->second);
         }
 
         res.OK();
