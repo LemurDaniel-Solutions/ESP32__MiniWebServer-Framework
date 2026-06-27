@@ -11,6 +11,8 @@
 #include <vector>
 #include <string>
 
+#include <Preferences.h>
+
 namespace EspWeb
 {
     /**
@@ -46,6 +48,9 @@ namespace EspWeb
     private:
         /** @brief Path of the temporary folder used for spooled uploads. */
         std::string _tempFolder = "/tmp";
+
+        /** @brief FNV-1a 32-bit hash of key → 8-char hex string safe for NVS (max 15 chars). */
+        std::string hashKey(const std::string &key);
 
     public:
         /*-------------------------------------------------------------------------------------------------
@@ -155,18 +160,45 @@ namespace EspWeb
          **/
 
         /**
+         * @brief Reads a file from Little FS.
+         * @param key File Path.
+         * @return std::string read from file.
+         */
+        std::string readFile(const std::string &key);
+
+        /**
+         * @brief Reads and parses a JSON value from Non-Volatile Storage.
+         * @param key Non Volatile Storage Key.
+         * @return Parsed JsonDocument; empty document on read or parse error.
+         */
+        JsonDocument readJsonConfig(const std::string &key);
+
+        /**
+         * @brief Serializes a JsonDocument and writes it to Non-Volatile Storage.
+         * @param key Non Volatile Storage Key.
+         * @param doc JsonDocument to serialize.
+         */
+        void writeJsonConfig(const std::string &key, const JsonDocument &doc);
+
+        /**
          * @brief Reads and parses a JSON file from LittleFS.
          * @param path Absolute LittleFS file path.
          * @return Parsed JsonDocument; empty document on read or parse error.
          */
-        JsonDocument readJson(const std::string &path);
+        JsonDocument readJsonFile(const std::string &path);
 
         /**
          * @brief Serializes a JsonDocument and writes it to a LittleFS file.
-         * @param path Absolute LittleFS file path (created or overwritten).
-         * @param doc  JsonDocument to serialize.
+         * @param path Absolute LittleFS file path.
+         * @param doc JsonDocument to serialize.
          */
-        void writeJson(const std::string &path, const JsonDocument &doc);
+        void writeJsonFile(const std::string &path, const JsonDocument &doc);
+
+        /** @deprecated Use readJsonConfig instead. */
+        inline JsonDocument readJson(const std::string &key) { return readJsonConfig(key); }
+
+        /** @deprecated Use writeJsonConfig instead. */
+        inline void writeJson(const std::string &key, const JsonDocument &doc) { writeJsonConfig(key, doc); }
     };
 
     /** @brief Global FileHandler instance shared across the framework. */

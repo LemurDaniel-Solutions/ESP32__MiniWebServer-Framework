@@ -70,9 +70,9 @@ namespace EspWeb
         if (_admin)
             (*_admin)[key] = value;
 
-        JsonDocument doc = fileHandler.readJson(ADMIN_CREDENTIALS_FILE);
+        JsonDocument doc = fileHandler.readJsonConfig(ADMIN_CREDENTIALS_FILE);
         doc[key] = value;
-        fileHandler.writeJson(ADMIN_CREDENTIALS_FILE, doc);
+        fileHandler.writeJsonConfig(ADMIN_CREDENTIALS_FILE, doc);
     }
 
     std::string TokenManager::getValue(const std::string &key)
@@ -80,7 +80,7 @@ namespace EspWeb
         if (_admin == nullptr)
         {
             _admin = new JsonDocument();
-            *_admin = fileHandler.readJson(ADMIN_CREDENTIALS_FILE);
+            *_admin = fileHandler.readJsonConfig(ADMIN_CREDENTIALS_FILE);
         }
 
         if ((*_admin)[key].is<std::string>())
@@ -210,7 +210,7 @@ namespace EspWeb
     {
         const Token token = Token::createApiToken(name, action);
 
-        JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
+        JsonDocument doc = fileHandler.readJsonConfig(ADMIN_PERMANENT_TOKENS);
 
         JsonObject tokenObj = doc[name].to<JsonObject>();
         tokenObj["value"] = token.value;
@@ -218,7 +218,7 @@ namespace EspWeb
         for (const std::string &entry : token.action)
             actionArr.add(entry);
 
-        fileHandler.writeJson(ADMIN_PERMANENT_TOKENS, doc);
+        fileHandler.writeJsonConfig(ADMIN_PERMANENT_TOKENS, doc);
 
         delete _API_TOKENS;
         _API_TOKENS = nullptr;
@@ -229,11 +229,11 @@ namespace EspWeb
 
     void TokenManager::removeApiToken(const std::string &name)
     {
-        JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
+        JsonDocument doc = fileHandler.readJsonConfig(ADMIN_PERMANENT_TOKENS);
         doc.remove(name);
         delete _API_TOKENS;
         _API_TOKENS = nullptr;
-        fileHandler.writeJson(ADMIN_PERMANENT_TOKENS, doc);
+        fileHandler.writeJsonConfig(ADMIN_PERMANENT_TOKENS, doc);
     }
 
     std::vector<Token> TokenManager::listApiTokens()
@@ -241,7 +241,7 @@ namespace EspWeb
         if (_API_TOKENS == nullptr)
         {
             _API_TOKENS = new std::map<std::string, Token>();
-            JsonDocument doc = fileHandler.readJson(ADMIN_PERMANENT_TOKENS);
+            JsonDocument doc = fileHandler.readJsonConfig(ADMIN_PERMANENT_TOKENS);
             for (JsonPair kv : doc.as<JsonObject>())
             {
                 std::vector<std::string> actions;

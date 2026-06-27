@@ -893,14 +893,20 @@ File handling is available through the static `Router::fs` member inside any `Ro
 ### JSON files
 
 ```cpp
-// Read
-JsonDocument cfg = Router::fs.readJson("/config.json");
+// Read from Non-Volatile Storage (NVS)
+JsonDocument cfg = Router::fs.readJsonConfig("my_config");
 const char* name = cfg["name"];
 
-// Write
+// Write to Non-Volatile Storage (NVS)
 JsonDocument out;
 out["status"] = "ok";
-Router::fs.writeJson("/config.json", out);
+Router::fs.writeJsonConfig("my_config", out);
+
+// Read from LittleFS file
+JsonDocument cfg = Router::fs.readJsonFile("/config.json");
+
+// Write to LittleFS file
+Router::fs.writeJsonFile("/config.json", out);
 ```
 
 ### Filesystem operations
@@ -941,8 +947,11 @@ Router::fs.moveFile(tmpPath, "/data/result.bin");
 
 | Method | Description |
 |--------|-------------|
-| `fs.readJson(path)` | Read a JSON file → `JsonDocument` |
-| `fs.writeJson(path, doc)` | Write a `JsonDocument` to a JSON file |
+| `fs.readJsonConfig(key)` | Read a `JsonDocument` from Non-Volatile Storage |
+| `fs.writeJsonConfig(key, doc)` | Write a `JsonDocument` to Non-Volatile Storage |
+| `fs.readJsonFile(path)` | Read a JSON file from LittleFS → `JsonDocument` |
+| `fs.writeJsonFile(path, doc)` | Write a `JsonDocument` to a LittleFS JSON file |
+| `fs.readFile(path)` | Read a raw file from LittleFS → `std::string` |
 | `fs.exists(path)` | Check whether a file or folder exists |
 | `fs.listFiles(path)` | List all entries in a folder → `vector<FileInfo>` |
 | `fs.moveFile(src, dst)` | Move or rename a file |

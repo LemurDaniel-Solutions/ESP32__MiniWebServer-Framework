@@ -2,10 +2,9 @@
 // Copyright © 2026, Daniel Landau
 // MIT License
 
-#include <vector>
-#include <string>
-
 #include <utils/utility.file.h>
+
+#define NVS_NAMESPACE "espweb"
 
 namespace EspWeb
 {
@@ -76,6 +75,18 @@ namespace EspWeb
      * Helper Methods
      *
      **/
+
+    std::string FileHandler::hashKey(const std::string &key)
+    {
+        uint64_t hash = 14695981039346656037ull;
+        for (unsigned char c : key)
+            hash = (hash ^ c) * 1099511628211ull;
+
+        char buf[17];
+        snprintf(buf, sizeof(buf), "%016llx", hash);
+        buf[15] = '\0';
+        return std::string(buf);
+    }
 
     std::string FileHandler::randomString(int size)
     {
@@ -244,31 +255,110 @@ namespace EspWeb
      *
      **/
 
-    JsonDocument FileHandler::readJson(const std::string &path)
+    std::string FileHandler::readFile(const std::string &path)
     {
+
         if (!LittleFS.begin())
         {
             Serial.println("Failed to mount LittleFs");
-            return JsonDocument();
+            return "";
         }
 
         if (!LittleFS.exists(path.c_str()))
         {
             Serial.printf("❌ CRITICAL: JSON file %s not found!\n", path.c_str());
-            return JsonDocument();
+            return "";
         }
 
         File file = LittleFS.open(path.c_str(), "r");
         if (!file)
         {
             Serial.printf("❌ CRITICAL: Failed to open JSON file %s for reading!\n", path.c_str());
-            return JsonDocument();
+            return "";
         }
 
         size_t size = file.size();
-        std::string jsonStr(size, '\0');
-        file.readBytes(&jsonStr[0], size);
+        std::string entry(size, '\0');
+        file.readBytes(&entry[0], size);
         file.close();
+
+        return entry;
+    }
+
+    JsonDocument FileHandler::readJsonConfig(const std::string &key)
+    {
+        Preferences prefs;
+        if (!prefs.begin(NVS_NAMESPACE, false))
+        {
+            Serial.println("❌ CRITICAL: Failed to open NVS namespace!");
+            return JsonDocument();
+        }
+
+        std::string entry = prefs.getString(hashKey(key).c_str(), "").c_str();
+        prefs.end();
+
+        if (!entry.empty())
+        {
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, entry);
+            if (error)
+            {
+                Serial.printf("❌ CRITICAL: Failed to parse JSON from key %s! Error: %s\n", key.c_str(), error.c_str());
+                return JsonDocument();
+            }
+
+            return doc;
+        }
+
+        /*
+        This is for backwards compatibility.
+        Searching a file with the path and reading its json.
+        */
+        entry = readFile(key);
+
+        if (!entry.empty())
+        {
+            JsonDocument doc;
+            DeserializationError error = deserializeJson(doc, entry);
+            if (error)
+            {
+                Serial.printf("❌ CRITICAL: Failed to parse JSON from key %s! Error: %s\n", key.c_str(), error.c_str());
+                return JsonDocument();
+            }
+
+            writeJsonConfig(key, doc);
+
+            Serial.printf("ℹ️ Migrated JSON from LittleFS file to NVS key %s\n", key.c_str());
+
+            return doc;
+        }
+
+        return JsonDocument();
+    }
+
+    void FileHandler::writeJsonConfig(const std::string &key, const JsonDocument &doc)
+    {
+        std::string jsonStr;
+        serializeJson(doc, jsonStr);
+
+        Preferences prefs;
+        if (!prefs.begin(NVS_NAMESPACE, false))
+        {
+            Serial.println("❌ CRITICAL: Failed to open NVS namespace!");
+            return;
+        }
+
+        prefs.putString(hashKey(key).c_str(), jsonStr.c_str());
+        prefs.end();
+
+        Serial.printf("✅ Successfully wrote JSON to NVS key %s\n", key.c_str());
+    }
+
+    JsonDocument FileHandler::readJsonFile(const std::string &path)
+    {
+        std::string jsonStr = readFile(path);
+        if (jsonStr.empty())
+            return JsonDocument();
 
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, jsonStr);
@@ -281,11 +371,11 @@ namespace EspWeb
         return doc;
     }
 
-    void FileHandler::writeJson(const std::string &path, const JsonDocument &doc)
+    void FileHandler::writeJsonFile(const std::string &path, const JsonDocument &doc)
     {
         if (!LittleFS.begin())
         {
-            Serial.println("Failed to mount LittleFs");
+            Serial.println("Failed to mount LittleFS");
             return;
         }
 
