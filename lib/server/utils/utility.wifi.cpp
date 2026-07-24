@@ -156,7 +156,9 @@ namespace EspWeb
     {
         Serial.printf("Connecting to: %s (%d dBm)\n", network.ssid.c_str(), network.signalStrength);
 
-        WiFi.mode(WIFI_STA);
+        // Keep an already-running AP alive while attempting to reconnect, so clients
+        // currently on the AP (e.g. configuring WiFi via the admin page) aren't dropped.
+        WiFi.mode(isApMode() ? WIFI_AP_STA : WIFI_STA);
         WiFi.begin(network.ssid.c_str(), network.password.c_str());
 
         const int timeStart = millis() / 1000;
@@ -204,6 +206,14 @@ namespace EspWeb
         bool wasApMode = isApMode();
 
         std::vector<WiFiConfig> nearby = getNearestNetworks();
+
+        // Already serving AP clients and no new candidate network to try - leave the
+        // AP running untouched instead of restarting it (which would drop connected clients).
+        if (wasApMode && nearby.empty())
+        {
+            return;
+        }
+
         for (const WiFiConfig &network : nearby)
         {
             if (attemptConnect(network))
@@ -214,18 +224,13 @@ namespace EspWeb
 
         if (wasApMode)
         {
-            Serial.println("Already in AP Mode...");
+            // AP was kept alive via WIFI_AP_STA during the attempts above, so it's
+            // still running - no need to restart it.
+            Serial.println("No Connection could be made, staying in AP mode...");
+            return;
         }
 
-        else if (nearby.empty())
-        {
-            Serial.println("No saved networks in range, starting AP mode...");
-        }
-        else
-        {
-            Serial.println("No Connection could be made, starting in AP mode...");
-        }
-
+        Serial.println("No saved networks in range, starting AP mode...");
         WiFi.mode(WIFI_AP);
         WiFi.softAP(DEFAULT_WIFI_SSID);
         Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
