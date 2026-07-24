@@ -348,8 +348,15 @@ namespace EspWeb
             return;
         }
 
-        prefs.putString(hashKey(key).c_str(), jsonStr.c_str());
+        size_t written = prefs.putString(hashKey(key).c_str(), jsonStr.c_str());
         prefs.end();
+
+        if (written != jsonStr.length())
+        {
+            Serial.printf("❌ CRITICAL: Failed to write JSON to NVS key %s (wrote %u of %u bytes)!\n",
+                          key.c_str(), (unsigned)written, (unsigned)jsonStr.length());
+            return;
+        }
 
         Serial.printf("✅ Successfully wrote JSON to NVS key %s\n", key.c_str());
     }
