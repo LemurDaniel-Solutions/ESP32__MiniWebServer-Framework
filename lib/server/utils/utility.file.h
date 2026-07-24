@@ -181,6 +181,12 @@ namespace EspWeb
         void writeJsonConfig(const std::string &key, const JsonDocument &doc);
 
         /**
+         * @brief Removes a JSON value from Non-Volatile Storage.
+         * @param key Non Volatile Storage Key.
+         */
+        void removeJsonConfig(const std::string &key);
+
+        /**
          * @brief Reads and parses a JSON file from LittleFS.
          * @param path Absolute LittleFS file path.
          * @return Parsed JsonDocument; empty document on read or parse error.

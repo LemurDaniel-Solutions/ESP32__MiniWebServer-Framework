@@ -361,6 +361,19 @@ namespace EspWeb
         Serial.printf("✅ Successfully wrote JSON to NVS key %s\n", key.c_str());
     }
 
+    void FileHandler::removeJsonConfig(const std::string &key)
+    {
+        Preferences prefs;
+        if (!prefs.begin(NVS_NAMESPACE, false))
+        {
+            Serial.println("❌ CRITICAL: Failed to open NVS namespace!");
+            return;
+        }
+
+        prefs.remove(hashKey(key).c_str());
+        prefs.end();
+    }
+
     JsonDocument FileHandler::readJsonFile(const std::string &path)
     {
         std::string jsonStr = readFile(path);
